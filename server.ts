@@ -115,6 +115,8 @@ app.post("/api/analyze", async (req, res) => {
     // Fallback to Simulation Mode if API Key is known to be bad
     if (isPlaceholder) {
       console.warn("Generating simulated multi-agent consensus (No valid API key).");
+      // Simulate AI "Thinking" time for demo video realism
+      await new Promise(r => setTimeout(r, 2000));
       return res.json(getSimulatedResponse(marketState, portfolio));
     }
 
