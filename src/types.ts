@@ -55,6 +55,9 @@ export interface SoSoVaultAnalysis {
   signal_attribution?: {
     title: string;
     description: string;
+    impact_level?: 'HIGH' | 'MEDIUM' | 'LOW';
+    sentiment_score?: number;
+    relative_time?: string;
   }[];
   debate_log?: {
     alpha_hunter: string;

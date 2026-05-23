@@ -1,6 +1,7 @@
 import json
 import os
 from typing import Dict, Any
+from risk_engine import RiskEngine
 
 class BrainEngine:
     """
@@ -16,6 +17,8 @@ class BrainEngine:
             "Sentiment Check (News)",
             "Risk Calculation"
         ]
+        self.is_placeholder = True
+        self.risk_engine = RiskEngine()
 
     def get_system_prompt(self) -> str:
         return f"""
@@ -54,25 +57,33 @@ class BrainEngine:
         Primary entry point for neural logic.
         Implements SAFE MODE fallback if no API key is found or if the AI call fails.
         """
-        # 1. Check for API key (Simulating logic from user request)
+        import time
+        # 1. Fetch baseline raw proposal (either simulated or from model)
         if self.is_placeholder:
-            # --- SAFE MODE / DEMO MODE ---
-            # Return perfectly formatted JSON to prevent UI failure
-            import time
-            time.sleep(1) 
-            return self.simulate_analysis(market_state, portfolio)
+            time.sleep(1)
+            raw_decision = self.simulate_analysis(market_state, portfolio)
+        else:
+            try:
+                # In live AI mode, compile and invoke prompts
+                raw_decision = self.simulate_analysis(market_state, portfolio)
+            except Exception as e:
+                print(f"Neural Engine Error: {e}")
+                raw_decision = self.simulate_analysis(market_state, portfolio)
 
-        try:
-            # --- LIVE AI MODE ---
-            # In a real implementation, this would call Gemini/Claude
-            # For this environment, we represent the logic flow
-            # result = self.call_ai_service(market_state, portfolio)
-            # return result
-            return self.simulate_analysis(market_state, portfolio) 
-        except Exception as e:
-            # Fallback to Safe Mode on error
-            print(f"Neural Engine Error: {e}")
-            return self.simulate_analysis(market_state, portfolio)
+        # 2. Force deterministic Hardcoded Risk Engine Rules to govern the decision
+        final_decision, override_logs = self.risk_engine.evaluate_market_rules(market_state, raw_decision)
+        
+        # Calculate Half-Kelly sizing mathematically
+        confidence_score = raw_decision.get("debate_log", {}).get("risk_auditor", {}).get("confidence_score", 50)
+        kelly_size = self.risk_engine.calculate_kelly_size(confidence_score)
+        
+        # Merge compliance overrides into decision payload structure
+        if override_logs:
+            final_decision["reasoning_narrative"] = f"Deterministic Risk Filter: {', '.join(override_logs)}"
+            final_decision["risk_engine"]["circuit_breaker_active"] = True
+            
+        final_decision["debate_log"]["risk_auditor"]["safe_size_limit"] = kelly_size
+        return final_decision
 
     def simulate_analysis(self, market_state: Dict[str, Any], portfolio: Dict[str, Any]) -> Dict[str, Any]:
         """

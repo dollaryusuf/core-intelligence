@@ -2,5 +2,7 @@
   "name": "SoSo-Vault",
   "description": "On-chain treasury quant agent dashboard using SoSoValue market signals for narrative rotation and capital preservation.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

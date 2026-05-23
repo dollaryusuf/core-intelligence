@@ -66,7 +66,7 @@ export const generateMockData = () => {
     pnl24h: parseFloat((Math.random() * 3).toFixed(1))
   };
 
-  return { sentiment, sectors, macro, portfolio };
+  return { sentiment, sectors, macro, portfolio, source: 'SIMULATED' as const };
 };
 
 export const getLiveMarketData = async (): Promise<any> => {
@@ -138,3 +138,26 @@ export const getSimulationHistory = async (): Promise<any[]> => {
     return [];
   }
 };
+
+export const getExecutionLedger = async (): Promise<any[]> => {
+  try {
+    const response = await fetch("/api/ledger");
+    if (!response.ok) throw new Error("Backend offline");
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to fetch execution ledger:", error);
+    return [];
+  }
+};
+
+export const getHostBacktestTimeline = async (): Promise<any[]> => {
+  try {
+    const response = await fetch("/api/backtest");
+    if (!response.ok) throw new Error("Backend offline");
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to fetch backtest timeline:", error);
+    return [];
+  }
+};
+
