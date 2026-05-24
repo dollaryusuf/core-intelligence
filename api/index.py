@@ -638,7 +638,13 @@ def generate_live_response(api_key: str = None) -> Dict[str, Any]:
 # --- 4. FLASK SERVER ENDPOINT ROUTING ---
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-USE_FLASK = True
+
+app = Flask(__name__)
+CORS(app)
+
+# Support multi-runtime and Vercel exports
+application = app
+handler = app
 
 def get_intelligence_payload(soso_key: str) -> Dict[str, Any]:
     res = generate_live_response(api_key=soso_key)
@@ -723,198 +729,38 @@ def get_intelligence_payload(soso_key: str) -> Dict[str, Any]:
     }
     return response_data
 
-# --- 4. FLASK SERVER ENDPOINT ROUTING ---
-USE_FLASK = False
-try:
-    from flask import Flask, jsonify, request
-    from flask_cors import CORS
-    USE_FLASK = True
-except ImportError:
-    pass
+@app.route("/", methods=["GET", "POST"])
+@app.route("/api", methods=["GET", "POST"])
+@app.route("/api/live", methods=["GET", "POST"])
+@app.route("/api/index", methods=["GET", "POST"])
+def soso_api_index():
+    api_key_header = request.headers.get("x-api-key") or request.headers.get("X-API-Key")
+    auth_header = request.headers.get("Authorization")
+    if auth_header and not auth_header.strip().lower().startswith("bearer "):
+        api_key_header = api_key_header or auth_header
 
-def get_intelligence_payload(soso_key: str) -> Dict[str, Any]:
-    res = generate_live_response(api_key=soso_key)
+    api_key_query = request.args.get("api_key")
+    soso_key = api_key_header or api_key_query or os.getenv("SOSO_API_KEY") or os.getenv("SOSO_VALUE_API_KEY")
     
-    # Import PerformanceManager dynamically to avoid routing or workspace path conflicts
-    try:
-        from .performance_manager import PerformanceManager
-    except (ImportError, ValueError):
-        try:
-            from performance_manager import PerformanceManager
-        except ImportError:
-            import sys
-            import os
-            sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            from performance_manager import PerformanceManager
-        
-    perf = PerformanceManager()
+    result = generate_live_response(api_key=soso_key)
+    return jsonify(result)
+
+@app.route("/api/intelligence", methods=["GET", "POST"])
+def api_intelligence():
+    api_key_header = request.headers.get("x-api-key") or request.headers.get("X-API-Key")
+    auth_header = request.headers.get("Authorization")
+    if auth_header and not auth_header.strip().lower().startswith("bearer "):
+        api_key_header = api_key_header or auth_header
+
+    api_key_query = request.args.get("api_key")
+    soso_key = api_key_header or api_key_query or os.getenv("SOSO_API_KEY") or os.getenv("SOSO_VALUE_API_KEY")
     
-    # Run 7-day simulated backtest based on live sentiment
-    live_data = res.get("live_data", {})
-    sentiment_score = live_data.get("sentiment_score", 0.72)
-    try:
-        backtest_timeline = perf.run_simulated_backtest(days=7, sentiment_score=sentiment_score)
-    except Exception as e:
-        logger.error(f"Error running backtest: {e}")
-        backtest_timeline = []
-        
-    # Extract flows for real-time ETF flow verification & risk VETOs (flows < -100M or -100M expressed as -100.0 depending on units)
-    etf_flows = live_data.get("etf_net_flows", [115.2, 85.0, -42.0, 210.3, 155.4])
-    latest_flow = etf_flows[-1] if etf_flows else 155.4
-    
-    # Check if outflow breaches limit (if expressed in absolute value e.g. -120M or decimal -120.0)
-    is_vetoed = False
-    if latest_flow < -100.0 or (latest_flow > 100000.0 and latest_flow < -100000000.0):
-        is_vetoed = True
-        
-    # Detect if we are in Safe Mode (No Anthropic key or using fallback narrative)
-    # Use professional Neural Simulation Layer narrative based on actual SoSoValue outputs
-    sectors_map = live_data.get("sector_performance_map", {"AI": 15.4, "L2": 6.2, "DePIN": 8.7, "RWA": 4.5})
-    best_active_sector = max(sectors_map, key=sectors_map.get) if sectors_map else "AI"
-    best_active_perf = sectors_map.get(best_active_sector, 15.4)
-    
-    if is_vetoed:
-        quant_narrative = (
-            f"Neural Simulation Alert: Verified high institutional outflow detected: "
-            f"${abs(latest_flow):.2f}M today. Outflow-limit breached. Hardcoded risk engine veto active. "
-            "Strategic Mandate forced: EXIT TO STABLES."
-        )
-    else:
-        quant_narrative = (
-            f"Neural Analysis: Institutional rotation detected in {best_active_sector} sector "
-            f"(+{best_active_perf:.2f}% vs BTC) via SoSo-Indices. Standard rebalancing parameters active "
-            f"at {sentiment_score * 100:.1f}% positive retail sentiment velocity."
-        )
-        
-    raw_alpha_hunter = res.get("debate_log", {}).get("alpha_hunter")
-    final_alpha_hunter_rationale = raw_alpha_hunter or quant_narrative
-
-    kelly_size_pct = res.get("mathematical_kelly_size", 14.8)
-    
-    response_data = {
-        "empire_stats": {
-            "aum": 142500000.00,
-            "daily_revenue": 7808.21,
-            "pnl_24h_percent": round(sentiment_score * 4.5 - 2.0, 2)
-        },
-        "risk_engine": {
-            "score": 98 if is_vetoed else res.get("risk_engine", {}).get("risk_score", 35),
-            "level": "Critical" if is_vetoed else res.get("risk_engine", {}).get("risk_level", "Moderate"),
-            "circuit_breaker_active": is_vetoed or res.get("risk_engine", {}).get("circuit_breaker_active", False),
-            "is_vetoed": is_vetoed
-        },
-        "alpha_hunter": {
-            "rationale": final_alpha_hunter_rationale
-        },
-        "headlines": live_data.get("top_news", []),
-        "live_data": live_data,
-        "validation_badge": "● CORE LIVE SYNC",
-        "kelly_size": kelly_size_pct,
-        "backtest_data": backtest_timeline,
-        "raw_response": res
-    }
-    return response_data
-
-if USE_FLASK:
-    app = Flask(__name__)
-    CORS(app)
-
-    # Support multi-runtime and Vercel exports
-    application = app
-    handler = app
-
-    @app.route("/", methods=["GET", "POST"])
-    @app.route("/api", methods=["GET", "POST"])
-    @app.route("/api/live", methods=["GET", "POST"])
-    @app.route("/api/index", methods=["GET", "POST"])
-    def soso_api_index():
-        api_key_header = request.headers.get("x-api-key") or request.headers.get("X-API-Key")
-        auth_header = request.headers.get("Authorization")
-        if auth_header and not auth_header.strip().lower().startswith("bearer "):
-            api_key_header = api_key_header or auth_header
-
-        api_key_query = request.args.get("api_key")
-        soso_key = api_key_header or api_key_query or os.getenv("SOSO_API_KEY") or os.getenv("SOSO_VALUE_API_KEY")
-        
-        result = generate_live_response(api_key=soso_key)
-        return jsonify(result)
-
-    @app.route("/api/intelligence", methods=["GET", "POST"])
-    def api_intelligence():
-        api_key_header = request.headers.get("x-api-key") or request.headers.get("X-API-Key")
-        auth_header = request.headers.get("Authorization")
-        if auth_header and not auth_header.strip().lower().startswith("bearer "):
-            api_key_header = api_key_header or auth_header
-
-        api_key_query = request.args.get("api_key")
-        soso_key = api_key_header or api_key_query or os.getenv("SOSO_API_KEY") or os.getenv("SOSO_VALUE_API_KEY")
-        
-        response_data = get_intelligence_payload(soso_key=soso_key)
-        return jsonify(response_data)
-else:
-    from http.server import BaseHTTPRequestHandler, HTTPServer
-
-    class FallbackHTTPHandler(BaseHTTPRequestHandler):
-        def log_message(self, format, *args):
-            pass
-
-        def do_OPTIONS(self):
-            self.send_response(200)
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type, x-api-key, X-API-Key, Authorization")
-            self.end_headers()
-
-        def do_GET(self):
-            self.handle_request()
-
-        def do_POST(self):
-            self.handle_request()
-
-        def handle_request(self):
-            soso_key = os.getenv("SOSO_API_KEY") or os.getenv("SOSO_VALUE_API_KEY")
-            for header, value in self.headers.items():
-                if header.lower() == "x-api-key":
-                    soso_key = value
-                elif header.lower() == "authorization" and not value.strip().lower().startswith("bearer "):
-                    soso_key = value
-
-            if "intelligence" in self.path:
-                result = get_intelligence_payload(soso_key=soso_key)
-            else:
-                result = generate_live_response(api_key=soso_key)
-
-            response_bytes = json.dumps(result).encode("utf-8")
-
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type, x-api-key, X-API-Key, Authorization")
-            self.end_headers()
-            self.wfile.write(response_bytes)
-
-    class DummyHandler:
-        def __call__(self, environ, start_response):
-            status = '200 OK'
-            response_headers = [('Content-type', 'application/json')]
-            start_response(status, response_headers)
-            return [b'{"status": "fallback"}']
-
-    app = DummyHandler()
-    application = app
-    handler = app
+    response_data = get_intelligence_payload(soso_key=soso_key)
+    return jsonify(response_data)
 
 if __name__ == "__main__":
     port = 5001
-    if USE_FLASK:
-        print(f"[Python] Starting Flask endpoint on port {port}...")
-        app.run(host="0.0.0.0", port=port, debug=True)
-    else:
-        print(f"[Python] Starting Fallback HTTPServer on port {port}...")
-        server = HTTPServer(("0.0.0.0", port), FallbackHTTPHandler)
-        try:
-            server.serve_forever()
-        except KeyboardInterrupt:
-            pass
+    print(f"[Python] Starting Flask endpoint on port {port}...")
+    app.run(host="0.0.0.0", port=port, debug=True)
+
 
