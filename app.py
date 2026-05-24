@@ -51,6 +51,22 @@ class RiskEngine:
         net_inflow_today_usd = etf_flows.get("net_inflow_today", 0.0)
         funding_rate = market_state.get("funding_rates", 0.0)
 
+        # Defensive keys initialization
+        if "allocation_plan" not in modified_proposal:
+            modified_proposal["allocation_plan"] = {}
+        if "action" not in modified_proposal["allocation_plan"]:
+            modified_proposal["allocation_plan"]["action"] = "HOLD"
+        if "target_weights" not in modified_proposal["allocation_plan"]:
+            modified_proposal["allocation_plan"]["target_weights"] = {
+                "BTC": 0.40,
+                "ETH": 0.25,
+                "SOL": 0.15,
+                "LINK": 0.10,
+                "STABLES": 0.10
+            }
+        if "reasoning_narrative" not in modified_proposal:
+            modified_proposal["reasoning_narrative"] = "Standard algorithmic allocation shift."
+
         # Rule 1 (Liquidity Limit): If Net ETF Inflow < -$100M, force a VETO and move target weights to 50% stables.
         if net_inflow_today_usd < self.etf_outflow_threshold_usd:
             override_logs.append(
@@ -425,6 +441,141 @@ if "deployed_nodes" not in st.session_state:
 
 
 # --- 6. VISUAL CSS EMPIRE STYLING ---
+def render_quant_card(title, value, status_label=""):
+    border_color = "#1a1a1a"
+    shadow_style = ""
+    accent_bar = "#8E9299"
+    status_color = "#8E9299"
+    
+    status_lower = status_label.lower() if status_label else ""
+    value_lower = value.lower() if value else ""
+    title_lower = title.lower() if title else ""
+    
+    is_active_green = any(x in status_lower or x in value_lower or x in title_lower for x in ["rebalance", "approved", "compliant", "success", "secure", "live"])
+    is_active_red = any(x in status_lower or x in value_lower or x in title_lower for x in ["swan", "veto", "blocked", "warning", "breaker", "error", "liquidate"])
+    
+    if is_active_green:
+        border_color = "#00FFA3"
+        shadow_style = "box-shadow: 0 0 15px rgba(0, 255, 163, 0.2);"
+        accent_bar = "#00FFA3"
+        status_color = "#00FFA3"
+    elif is_active_red:
+        border_color = "#FF4B4B"
+        shadow_style = "box-shadow: 0 0 15px rgba(255, 75, 75, 0.25);"
+        accent_bar = "#FF4B4B"
+        status_color = "#FF4B4B"
+        
+    status_html = ""
+    if status_label:
+        status_html = f"""
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: {status_color}; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">
+            {status_label}
+        </div>
+        """
+        
+    html = f"""
+    <div style="background-color: #0d0d0d; border: 1px solid {border_color}; border-left: 3px solid {accent_bar}; padding: 14px 16px; border-radius: 4px; display: flex; flex-direction: column; justify-content: center; height: 100%; {shadow_style}">
+        <div style="font-family: 'Space Grotesk', sans-serif; font-size: 10px; color: #8E9299; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; font-weight: 500;">
+            {title}
+        </div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 19px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; white-space: nowrap;">
+            {value}
+        </div>
+        {status_html}
+    </div>
+    """
+    return html
+
+def styled_card(title, value, delta="", subtext=""):
+    """Backward compatibility wrapper utilizing modern card style."""
+    status_lbl = f"{delta} | {subtext}" if (delta and subtext) else (delta or subtext)
+    return render_quant_card(title, value, status_lbl)
+
+# Scrollable Terminal-Style Logs Generator
+def render_neural_vault_logs(market_state, raw_ai, override_logs, black_swan_active):
+    log_lines = []
+    base_time = datetime.utcnow()
+    
+    def fmt_time(seconds_offset):
+        t = base_time - timedelta(seconds=seconds_offset)
+        return t.strftime("%H:%M:%S")
+
+    log_lines.append(f"[{fmt_time(120)}] [SYS_OK] Handshake initialized: COOP_INTELLIGENCE_SHARD_ACTIVE.")
+    
+    if soso_api_key and len(soso_api_key) >= 10:
+        log_lines.append(f"[{fmt_time(105)}] [AUTH_OK] SoSoValue API Authorized. Status: SECURE_CORE_LIVE_SYNC.")
+    else:
+        log_lines.append(f"[{fmt_time(105)}] [AUTH_WARN] SOSO_API_KEY absent. Activating VAULT_MIRROR_ACTIVE backup engine.")
+        
+    log_lines.append(f"[{fmt_time(90)}] [DATA] Ingested 7D ETF Spot inflows: {market_state.get('etf_net_flows', [])} USD-M equivalents.")
+    
+    net_inflow = market_state.get('etf_flows_detailed', {}).get('net_inflow_today', 0.0)
+    log_lines.append(f"[{fmt_time(80)}] [QUANT_ENG] Spot ETF outflow/inflow limits parsed: ${net_inflow/1e6:.2f}M.")
+    
+    funding_pct = market_state.get('funding_rates', 0.0) * 100
+    log_lines.append(f"[{fmt_time(75)}] [QUANT_ENG] System funding rates calculated: {funding_pct:.3f}% / Hour.")
+    
+    sentiment_val = market_state.get("sentiment_score", 0.58)
+    log_lines.append(f"[{fmt_time(60)}] [MODEL_REASON] Alpha Hunter opinion compiled. Sentiment velocity: {sentiment_val*100:.1f}%.")
+    
+    action_val = raw_ai.get("allocation_plan", {}).get("action", "HOLD")
+    log_lines.append(f"[{fmt_time(50)}] [MODEL_REASON] Alpha Hunter proposal generated bias: {action_val}.")
+    
+    kelly_val = risk_engine.calculate_half_kelly(sentiment_val)
+    log_lines.append(f"[{fmt_time(45)}] [MATH] Half-Kelly size optimization cap locked to {kelly_val}%.")
+    
+    log_lines.append(f"[{fmt_time(30)}] [AUDITOR] Auditing Alpha Hunter proposal against hard-coded python constraints...")
+    
+    if black_swan_active:
+        log_lines.append(f"[{fmt_time(15)}] [CRITICAL_BREAKER] !!! BLACK SWAN WARNING LEVEL 5 CODES !!! ETF Outflow limits exceeded.")
+        log_lines.append(f"[{fmt_time(10)}] [CIRCUIT_TRIP] VETO SIGNALS INJECTED. All rebalance executions blocked.")
+        log_lines.append(f"[{fmt_time(5)}] [SYS_CMD] Force portfolio allocation to 50% stables for safety.")
+    else:
+        if override_logs:
+            for log in override_logs:
+                cleaned_log = re.sub(r'[^a-zA-Z0-9_\-\s\.\$\[\]\:\,\(\)\/\%\>\<\@]', '', log)
+                log_lines.append(f"[{fmt_time(18)}] [OVERRIDE_VETO] {cleaned_log}")
+        else:
+            log_lines.append(f"[{fmt_time(15)}] [AUDITOR_OK] Core rules satisfied. Posture APPROVED for allocation execution.")
+            
+    log_lines.append(f"[{fmt_time(0)}] [SYS_OK] Waiting for transaction on-chain authorization parameters...")
+
+    html_lines = []
+    for line in log_lines:
+        color = "#8E9299"
+        if any(x in line for x in ["CRITICAL", "!!!", "VETO", "🚨", "🚫", "OVERRIDE"]):
+            color = "#FF4B4B"
+        elif any(x in line for x in ["OK", "APPROVED", "SECURE"]):
+            color = "#00FFA3"
+        elif any(x in line for x in ["WARN", "VAULT_MIRROR"]):
+            color = "#f59e0b"
+        elif any(x in line for x in ["SYS_CMD", "MODEL_REASON"]):
+            color = "#38bdf8"
+            
+        html_lines.append(f'<div style="margin-bottom: 4px; line-height: 1.4; color: {color}; font-family: \'JetBrains Mono\', monospace;"><span style="color: #64748b;">&gt;</span> {line}</div>')
+        
+    logs_html = "".join(html_lines)
+    
+    terminal_html = f"""
+    <div style="font-family: 'Space Grotesk', sans-serif; font-size: 11px; color: #8E9299; font-weight: bold; margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase;">
+        🤖 NEURAL VAULT LOGS & CONSOLE FEED:
+    </div>
+    <div class="terminal-container" style="
+        background-color: #0d0d0d; 
+        border: 1px solid #1a1a1a; 
+        border-radius: 4px; 
+        padding: 16px; 
+        height: 220px; 
+        overflow-y: scroll; 
+        font-family: 'JetBrains Mono', monospace; 
+        font-size: 11px;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+    ">
+        {logs_html}
+    </div>
+    """
+    return terminal_html
+
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap');
@@ -433,6 +584,12 @@ st.markdown("""
     [data-testid="stHeader"] {
         display: none !important;
     }
+    footer {
+        visibility: hidden !important;
+    }
+    #MainMenu {
+        visibility: hidden !important;
+    }
     
     .stApp { 
         background-color: #050505 !important; 
@@ -440,9 +597,22 @@ st.markdown("""
         font-family: 'Space Grotesk', sans-serif; 
     }
     
-    /* Padding: give the UI room to breathe */
+    /* Zero out the padding for .block-container */
     .block-container {
-        padding: 2rem 3rem !important;
+        padding: 0px !important;
+        max-width: 100% !important;
+    }
+    
+    /* Spacing inside vertical blocks to balance out the 0 margin of block-container */
+    div[data-testid="stVerticalBlock"] {
+        padding-left: 24px !important;
+        padding-right: 24px !important;
+    }
+    
+    /* Keep sidebar with clean padding */
+    [data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
     }
     
     /* Code and Technical typography */
@@ -454,20 +624,50 @@ st.markdown("""
         font-family: 'JetBrains Mono', monospace !important;
     }
     
-    /* Metrics: Force white-space nowrap and custom font-size so they don't cut off */
-    [data-testid="stMetricValue"] { 
-        color: #00FFA3 !important; 
+    /* Flat, high-contrast neon green with black text buttons */
+    button[data-baseweb="button"], .stButton button, div.stButton > button, div[data-testid="stFormSubmitButton"] > button {
+        background-color: #00FFA3 !important;
+        color: #050505 !important;
+        border: 1px solid #00FFA3 !important;
+        border-radius: 0px !important;
         font-family: 'JetBrains Mono', monospace !important;
+        font-size: 11px !important;
         font-weight: 700 !important;
-        font-size: 1.6rem !important; 
-        white-space: nowrap !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        padding: 0.6rem 1.2rem !important;
+        transition: all 0.1s ease-in-out !important;
+        box-shadow: none !important;
+        width: 100% !important;
+        height: 38px !important;
+        cursor: pointer !important;
+    }
+    button[data-baseweb="button"]:hover, .stButton button:hover, div.stButton > button:hover, div[data-testid="stFormSubmitButton"] > button:hover {
+        background-color: #050505 !important;
+        color: #00FFA3 !important;
+        border: 1px solid #00FFA3 !important;
+    }
+    button[data-baseweb="button"]:disabled, .stButton button:disabled, div.stButton > button:disabled, div[data-testid="stFormSubmitButton"] > button:disabled {
+        background-color: rgba(0, 255, 163, 0.04) !important;
+        color: rgba(255, 163, 0.3) !important;
+        border: 1px solid rgba(0, 255, 163, 0.15) !important;
+        cursor: not-allowed !important;
     }
     
-    /* Tabs: Style to be uppercase with #00FFA3 indicators and remove grey borders */
+    /* Sidebar styled as a flat technical console terminal */
+    [data-testid="stSidebar"] {
+        background-color: #0d0d0d !important;
+        border-right: 1px solid #1a1a1a !important;
+    }
+    [data-testid="stSidebarCloseButton"] {
+        color: #00FFA3 !important;
+    }
+    
+    /* Tabs: Uppercase JetBrains Mono with style matching #00FFA3, zero border lines */
     div[data-testid="stTabBar"] button {
         text-transform: uppercase !important;
         font-family: 'JetBrains Mono', monospace !important;
-        font-size: 12px !important;
+        font-size: 11px !important;
         font-weight: 600 !important;
         border: none !important;
         background-color: transparent !important;
@@ -523,26 +723,26 @@ st.markdown("""
     
     .pulse-emerald {
         background-color: #00FFA3;
-        animation: pulse-emerald-glow 2.2s infinite ease-in-out;
+        animation: pulse-emerald-glow 2s infinite ease-in-out;
     }
     
     .pulse-amber {
         background-color: #f59e0b;
-        animation: pulse-amber-glow 2.2s infinite ease-in-out;
+        animation: pulse-amber-glow 2s infinite ease-in-out;
     }
     
-    /* Black styling overrides for Streamlit forms and cards */
+    /* Black styling overrides for Streamlit elements */
     div[data-testid="column"] button {
-        border-radius: 20px !important;
+        border-radius: 0px !important;
     }
     
     .ledger-card {
-        background-color: #0b0d10;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 12px;
+        background-color: #0d0d0d;
+        border: 1px solid #1a1a1a;
+        border-radius: 4px;
         padding: 16px;
         margin-bottom: 12px;
-        transition: all 0.25s ease;
+        transition: all 0.2s ease;
     }
     .ledger-card:hover {
         border-color: #00FFA3;
@@ -555,23 +755,69 @@ st.markdown("""
 # --- 7. SIDEBAR: VERIFIABILITY DRAWER & CONTROLS ---
 with st.sidebar:
     st.image("https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6")
-    st.markdown("### 🔍 INSTITUTIONAL PORTAL")
+    st.markdown("### [PORTAL_ID: CORP_INST]")
     
-    source_class = "status-live" if market_data.get("source") == "LIVE_API" else "status-sim"
-    st.markdown(
-        f"DATA SOURCE: <span class='{source_class}'>{market_data.get('source', 'VAULT MIRROR')}</span>", 
-        unsafe_allow_html=True
-    )
+    if is_guest_mode:
+        status_color = "#f59e0b"
+        status_label = "VAULT_MIRROR_ACTIVE"
+        border_style = "border: 1px solid #f59e0b; box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);"
+    else:
+        status_color = "#00FFA3"
+        status_label = "CORE_LIVE_SYNC"
+        border_style = "border: 1px solid #00FFA3; box-shadow: 0 0 12px rgba(0, 255, 163, 0.25);"
+        
+    st.markdown(f"""
+    <div style="{border_style} padding: 12px; background-color: #050505; font-family: 'JetBrains Mono', monospace; font-size: 11px; margin-bottom: 16px; border-radius: 4px;">
+        <div style="color: #8E9299; font-size: 9px; text-transform: uppercase; margin-bottom: 4px;">[NETWORK_SECURE]</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 7px; height: 7px; border-radius: 50%; background-color: {status_color};" class="pulse-dot {'pulse-emerald' if not is_guest_mode else 'pulse-amber'}"></div>
+            <span style="color: {status_color}; font-weight: bold; letter-spacing: 0.05em;">STATUS: {status_label}</span>
+        </div>
+        <div style="color: #8E9299; font-size: 9px; margin-top: 6px;">DATA_SOURCE: <span style="color: #ffffff;">{market_data.get('source', 'VAULT_MIRROR')}</span></div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Non-custodial Wallet connection console
+    st.markdown("### [SECURITY_SHIELD: ACCESS]")
+    if not st.session_state.wallet_connected:
+        if st.button("[SYS_CMD: CONNECT_VAULT]", key="connect_wallet_btn_side", use_container_width=True, help="Web3 Hardware Multi-sig Sync"):
+            with st.spinner("ESTABLISHING LINK..."):
+                time.sleep(1.0)
+            st.session_state.wallet_connected = True
+            st.session_state.wallet_address = "7vWp21A5A05d6e271D578db9D079A31cE8a5B4f2e"
+            st.toast("Handshake completed. Non-custodial synchronizer activated!")
+            time.sleep(0.5)
+            st.rerun()
+    else:
+        addr = st.session_state.wallet_address
+        truncated_addr = f"{addr[:6]}...{addr[-4:]}" if addr else "0x71C...4f2e"
+        st.markdown(f"""
+        <div style="display: flex; align-items: center; justify-content: space-between; background-color: rgba(0, 255, 163, 0.04); border: 1px solid rgba(0, 255, 163, 0.15); padding: 8px 12px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: bold; color: #00FFA3; gap: 8px; width: 100%; height: 38px; white-space: nowrap; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 7px; height: 7px; border-radius: 50%; background-color: #00FFA3; box-shadow: 0 0 8px #00FFA3; flex-shrink: 0;" class="pulse-dot pulse-emerald"></div>
+                <span style="flex-shrink: 0; overflow: hidden; text-overflow: ellipsis;">{truncated_addr}</span>
+            </div>
+            <span style="color: #00FFA3; font-size: 9px; font-weight: bold; background: rgba(0, 255, 163, 0.1); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(0, 255, 163, 0.2);">ACTIVE</span>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("[TERMINATE_CONN]", key="disconnect_wallet_btn_side", use_container_width=True, help="Disconnect Non-Custodial Sync Protocol"):
+            st.session_state.wallet_connected = False
+            st.session_state.wallet_address = None
+            st.toast("Non-custodial session terminated.")
+            time.sleep(0.5)
+            st.rerun()
+            
+    st.markdown("---")
     
     # Verifiability expander showing real API response used by model
-    with st.expander("🔍 Inspect Raw SoSoValue Payload", expanded=False):
+    with st.expander("[SYS_LOAD: RECV_METRICS]", expanded=False):
         st.caption("Verifiable Backend Sync Payload:")
         st.json(market_data)
         
     st.markdown("---")
     
     # Black Swan activation trigger
-    black_swan_active = st.toggle("Simulate Black Swan Event", help="Trigger emergency circuit breakers and institutional outflow overrides.")
+    black_swan_active = st.toggle("ACTIVATE: Black Swan Scenario", help="Trigger emergency circuit breakers and institutional outflow overrides.")
     if black_swan_active:
         # Override data metrics triggers
         market_data["etf_flows_detailed"]["net_inflow_today"] = -150000000.0  # -$150M (Vetoes rebalances)
@@ -585,100 +831,92 @@ with st.sidebar:
             
         # Injects deep dark-red warning pulsing overlay on the entire viewport
         st.markdown("""
-            <style>
-            .stApp {
-                box-shadow: inset 0 0 120px rgba(255, 75, 75, 0.4) !important;
-                border: 4px solid #FF4B4B !important;
-                animation: pulse-red-capitulate 2s infinite alternate !important;
-                transition: all 0.5s ease-in-out;
-            }
-            @keyframes pulse-red-capitulate {
-                0% { box-shadow: inset 0 0 60px rgba(255, 75, 75, 0.2); }
-                100% { box-shadow: inset 0 0 140px rgba(255, 75, 75, 0.55); }
-            }
-            </style>
+             <style>
+             .stApp {
+                 box-shadow: inset 0 0 120px rgba(255, 75, 75, 0.45) !important;
+                 border: 4px solid #FF4B4B !important;
+                 animation: pulse-red-capitulate 2s infinite alternate !important;
+                 transition: all 0.5s ease-in-out;
+             }
+             @keyframes pulse-red-capitulate {
+                 0% { box-shadow: inset 0 0 60px rgba(255, 75, 75, 0.25); }
+                 100% { box-shadow: inset 0 0 140px rgba(255, 75, 75, 0.6); }
+             }
+             </style>
         """, unsafe_allow_html=True)
 
 
 # --- 8. HEADER PORTAL ---
-c1, c2, c3, c4 = st.columns([2, 1.2, 1.2, 1.2])
+if is_guest_mode:
+    status_pulse_class = "pulse-amber"
+    status_text_color = "#f59e0b"
+    status_label_str = "VAULT_MIRROR_ACTIVE"
+else:
+    status_pulse_class = "pulse-emerald"
+    status_text_color = "#00FFA3"
+    status_label_str = "CORE_LIVE_SYNC"
 
-with c1:
-    st.title("🛡️ SoSo-Vault")
+vault_security_color = "#FF4B4B" if black_swan_active else "#00FFA3"
+vault_security_lbl = "BLACK SWAN CIRCUIT ACTIVE" if black_swan_active else "STATE COMPLIANT"
+
+header_html_data = f"""
+<div style="
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 16px 24px; 
+    background: linear-gradient(135deg, #0d0d0d 0%, #050505 100%); 
+    border-bottom: 1px solid #1a1a1a; 
+    margin-bottom: 24px;
+    width: calc(100% + 48px);
+    margin-left: -24px;
+    margin-top: -24px;
+">
+    <!-- Left Logo and Network attestation -->
+    <div style="display: flex; align-items: center; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 10px; height: 10px; background-color: {'#FF4B4B' if black_swan_active else '#00FFA3'}; box-shadow: 0 0 10px {'#FF4B4B' if black_swan_active else '#00FFA3'}; border-radius: 50%;"></div>
+            <span style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px; color: #ffffff; letter-spacing: -0.03em;">[SYS: SOSO_VAULT]</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8E9299; border-left: 1px solid #1a1a1a; padding-left: 16px;">
+            <span>CONN: INTEL_NODE-001 | </span>
+            <div class="pulse-dot {status_pulse_class}" style="width: 6px; height: 6px; display: inline-block;"></div>
+            <span style="color: {status_text_color}; font-weight: 700; letter-spacing: 0.05em;">[{status_label_str}]</span>
+        </div>
+    </div>
     
-    if is_guest_mode:
-        status_html = f"""
-        <div style="display: flex; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #8E9299; margin-top: -6px; gap: 4px;">
-            <span>CONNECTED TO SOSO-INTELLIGENCE NODE-001 | </span>
-            <div class="pulse-dot pulse-amber" style="margin-left: 4px; margin-right: 2px;"></div>
-            <span style="color: #f59e0b; font-weight: bold; letter-spacing: 0.05em;">STATUS: VAULT MIRROR ACTIVE</span>
+    <!-- Right Metrics group in nowrap with exact spacing -->
+    <div style="display: flex; align-items: center; gap: 32px;">
+        <!-- Metric 1: AUM -->
+        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+            <span style="font-family: 'Space Grotesk', sans-serif; font-size: 9px; color: #8E9299; letter-spacing: 0.08em; text-transform: uppercase;">EMPIRE TOTAL AUM</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: #ffffff; white-space: nowrap;">$18,659,275 <span style="color: #00FFA3; font-size: 10px; margin-left: 4px; font-weight: bold;">▲ +0.05%</span></span>
         </div>
-        """
-    else:
-        status_html = f"""
-        <div style="display: flex; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #8E9299; margin-top: -6px; gap: 4px;">
-            <span>CONNECTED TO SOSO-INTELLIGENCE NODE-001 | </span>
-            <div class="pulse-dot pulse-emerald" style="margin-left: 4px; margin-right: 2px;"></div>
-            <span style="color: #00FFA3; font-weight: bold; letter-spacing: 0.05em;">STATUS: CORE LIVE SYNC</span>
+        
+        <!-- Metric 2: Revenue -->
+        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+            <span style="font-family: 'Space Grotesk', sans-serif; font-size: 9px; color: #8E9299; letter-spacing: 0.08em; text-transform: uppercase;">ACCRUED REVENUE</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: #ffffff; white-space: nowrap;">$1,021.92 <span style="color: #00FFA3; font-size: 10px; margin-left: 4px; font-weight: bold;">▲ +2.1%</span></span>
         </div>
-        """
-    st.markdown(status_html, unsafe_allow_html=True)
-
-with c2:
-    st.metric("EMPIRE TOTAL AUM", "$18,659,275", "+0.05%")
-
-with c3:
-    st.metric("ACCRUED REVENUE", "$1,021.92", "2% FEE")
-
-with c4:
-    # Interactive Wallet Connection Header
-    if not st.session_state.wallet_connected:
-        st.markdown("""
-        <div style="padding: 1px 0px 5px 0px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #8E9299; text-transform: uppercase; font-weight: bold; letter-spacing: 0.05em;">
-            🔒 Secure Access Control
+        
+        <!-- Metric 3: Vault Compliance -->
+        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+            <span style="font-family: 'Space Grotesk', sans-serif; font-size: 9px; color: #8E9299; letter-spacing: 0.08em; text-transform: uppercase;">VAULT SECURITY MODE</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: {vault_security_color}; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.02em;">{vault_security_lbl}</span>
         </div>
-        """, unsafe_allow_html=True)
-        # Custom glowing green action connection button
-        if st.button("🔌 CONNECT VAULT", key="connect_wallet_btn", use_container_width=True, help="Web3 Hardware Multi-sig Sync"):
-            with st.spinner("ESTABLISHING LINK..."):
-                time.sleep(1.0)
-            st.session_state.wallet_connected = True
-            st.session_state.wallet_address = "7vWp21A5A05d6e271D578db9D079A31cE8a5B4f2e"
-            st.toast("Handshake completed. Non-custodial synchronizer activated!")
-            time.sleep(0.5)
-            st.rerun()
-    else:
-        st.markdown("""
-        <div style="padding: 1px 0px 5px 0px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #8E9299; text-transform: uppercase; font-weight: bold; letter-spacing: 0.05em;">
-            ✓ Safe Handshake Locked
-        </div>
-        """, unsafe_allow_html=True)
-        col_w1, col_w2 = st.columns([3.2, 1])
-        with col_w1:
-            addr = st.session_state.wallet_address
-            truncated_addr = f"{addr[:6]}...{addr[-4:]}" if addr else "0x71C...4f2e"
-            st.markdown(f"""
-            <div style="display: inline-flex; align-items: center; justify-content: start; background-color: rgba(0, 255, 163, 0.04); border: 1px solid rgba(0, 255, 163, 0.15); padding: 8px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: bold; color: #00FFA3; gap: 8px; width: 100%; height: 38px; white-space: nowrap;">
-                <div style="width: 7px; height: 7px; border-radius: 50%; background-color: #00FFA3; box-shadow: 0 0 8px #00FFA3; flex-shrink: 0;" class="pulse-dot pulse-emerald"></div>
-                <span style="flex-shrink: 0; overflow: hidden; text-overflow: ellipsis;">{truncated_addr}</span>
-            </div>
-            """, unsafe_allow_html=True)
-        with col_w2:
-            if st.button("❌", key="disconnect_wallet_btn", use_container_width=True, help="Disconnect Non-Custodial Sync Protocol"):
-                st.session_state.wallet_connected = False
-                st.session_state.wallet_address = None
-                st.toast("Non-custodial session terminated.")
-                time.sleep(0.5)
-                st.rerun()
+    </div>
+</div>
+"""
+st.markdown(header_html_data, unsafe_allow_html=True)
 
 
 # --- 9. PORTAL CONTAINER TABS ---
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📈 MARKET INTELLIGENCE", 
-    "🧠 QUANT RISK STRATEGY", 
-    "📊 PERFORMANCE BACKTEST", 
-    "🛡️ AUTONOMOUS LEDGER", 
-    "👑 EMPIRE SCALING"
+    "[01: MARKET_INTELLIGENCE]", 
+    "[02: QUANT_RISK_STRATEGY]", 
+    "[03: PERFORMANCE_BACKTEST]", 
+    "[04: AUTONOMOUS_LEDGER]", 
+    "[05: EMPIRE_SCALING]"
 ])
 
 
@@ -686,16 +924,18 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 with tab1:
     col_a, col_b = st.columns([1, 2])
     with col_a:
-        st.subheader("Aggregated Market Sentiment")
+        st.markdown('<div style="font-family: \'Space Grotesk\', sans-serif; font-size: 18px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; margin-bottom: 4px;">[REGIME: SEGMENT_SENTIMENT]</div>', unsafe_allow_html=True)
         st.markdown("Social velocity index and news narratives filtered through SoSoValue streams.")
-        st.metric("Real-Time Sentiment Index", f"{market_data.get('sentiment_score', 0.58) * 100:.1f}%", market_data.get('sentiment_label', 'Cautious Optimism'))
         
-        st.markdown("##### Core Sector Target Focuses:")
+        # Replace st.metric here
+        st.markdown(styled_card("Real-Time Sentiment Index", f"{market_data.get('sentiment_score', 0.58) * 100:.1f}%", "", f"[CONSENSUS: {market_data.get('sentiment_label', 'Cautious Optimism').upper()}]"), unsafe_allow_html=True)
+        
+        st.markdown('<div style="font-family: \'Space Grotesk\', sans-serif; font-size: 13px; font-weight: 700; color: #ffffff; margin-top: 16px; margin-bottom: 6px;">[CORE_SECTORS]:</div>', unsafe_allow_html=True)
         for tag in market_data.get('top_narratives', ["#BTC", "#DePIN", "#AI-Agent"]):
             st.markdown(f"- <code style='color:#00FFA3; font-family:\"JetBrains Mono\"'>{tag}</code>", unsafe_allow_html=True)
     
     with col_b:
-        st.subheader("7-Day Spot ETF flows (USD Millions)")
+        st.markdown('<div style="font-family: \'Space Grotesk\', sans-serif; font-size: 18px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; margin-bottom: 12px;">[SYS_FLOWS: SPOT_ETF_7D_USD_M]</div>', unsafe_allow_html=True)
         # Plotly chart showing flow curves
         fig = go.Figure(data=go.Scatter(y=market_data.get('etf_net_flows', [115.2, 85.0, -42.0, 210.3, 152.4]), fill='tozeroy', line_color='#00FFA3'))
         fig.update_layout(
@@ -710,42 +950,47 @@ with tab1:
         st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
-    st.subheader("🕵️ SoSoValue Evidence Vault")
+    st.markdown('<div style="font-family: \'Space Grotesk\', sans-serif; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; margin-bottom: 2px;">[VAULT_ID: EVIDENCE_INGESTION]</div>', unsafe_allow_html=True)
     st.caption("Verifiable headline narratives ingested through the SoSoValue News API.")
 
     news_items = market_data.get("top_news", [])
     if news_items:
-        cols = st.columns(len(news_items))
-        for i, news in enumerate(news_items):
-            with cols[i]:
-                impact_level = news.get("impact_level", "HIGH")
-                sentiment_score = float(news.get("sentiment_score", 0.85))
-                relative_time = news.get("relative_time", "12m ago")
-                
-                impact_color = "#FF4B4B" if (impact_level == "HIGH" and market_data.get('sentiment_score', 0.5) < 0.25) else "#00FFA3"
-                st.markdown(f"""
-                <div style="background-color: #0b0d10; padding: 16px; border-radius: 12px; border: 1px solid #1c2026; min-height: 230px; display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 20px;">
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <span style="font-size: 9px; color: {impact_color}; font-family: 'JetBrains Mono', monospace; font-weight: bold;">● IMPACT: {impact_level}</span>
-                            <span style="font-size: 9px; color: #8E9299; font-family: 'JetBrains Mono', monospace; background: #161a20; padding: 2px 6px; border-radius: 4px;">{relative_time}</span>
-                        </div>
-                        <h4 style="font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #ffffff; font-family: 'Space Grotesk', sans-serif;">{news['title']}</h4>
-                        <p style="font-size: 11px; color: #a1a8b3; font-style: italic; line-height: 1.4;">"{news['description']}"</p>
-                    </div>
-                    <div style="margin-top: 10px; border-top: 1px dashed rgba(255,255,255,0.06); padding-top: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; font-family: 'JetBrains Mono', monospace;">
-                            <span style="color: #00FFA3; font-weight: bold; background: rgba(0,255,163,0.05); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(0,255,163,0.15);">SENTIMENT: {sentiment_score:+.2f}</span>
-                            <span style="color: #00FFA3; font-weight: bold; border: 1px solid rgba(0,255,163,0.25); background-color: rgba(0,255,163,0.12); padding: 2px 6px; border-radius: 4px;">VERIFIED</span>
-                        </div>
-                    </div>
+        grid_html = """
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 16px; margin-bottom: 24px;">
+        """
+        for index, news in enumerate(news_items):
+            impact_level = news.get("impact_level", "HIGH")
+            sentiment_score = float(news.get("sentiment_score", 0.85))
+            relative_time = news.get("relative_time", "12m ago")
+            
+            impact_color = "#FF4B4B" if (impact_level == "HIGH" and market_data.get('sentiment_score', 0.5) < 0.25) else "#00FFA3"
+            
+            grid_html += f"""
+            <div style="background-color: #0d0d0d; padding: 18px; border-radius: 4px; border: 1px solid #1a1a1a; display: flex; flex-direction: column; justify-content: space-between; position: relative; min-height: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.6);">
+                <div style="position: absolute; top: 18px; right: 18px; display: flex; align-items: center; gap: 4px;">
+                    <div style="width: 6px; height: 6px; border-radius: 50%; background-color: #00FFA3; box-shadow: 0 0 8px #00FFA3;" class="pulse-dot pulse-emerald"></div>
+                    <span style="font-family: 'JetBrains Mono', monospace; font-size: 8px; color: #00FFA3; font-weight: 700; letter-spacing: 0.05em;">[VERIFIED]</span>
                 </div>
-                """, unsafe_allow_html=True)
+                <div>
+                    <div style="margin-bottom: 12px;">
+                        <span style="font-size: 9px; color: {impact_color}; font-family: 'JetBrains Mono', monospace; font-weight: 700;">[VAL_IMPACT: {impact_level}]</span>
+                    </div>
+                    <h4 style="font-size: 14px; font-weight: 700; margin: 0 0 8px 0; color: #ffffff; font-family: 'Space Grotesk', sans-serif; line-height: 1.3;">{news['title']}</h4>
+                    <p style="font-size: 11px; color: #8E9299; font-family: 'Space Grotesk', sans-serif; line-height: 1.5; margin: 0;">"{news['description']}"</p>
+                </div>
+                <div style="margin-top: 16px; border-top: 1px solid #1a1a1a; padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #00FFA3; font-weight: 700; background: rgba(0,255,163,0.05); padding: 2px 6px; border-radius: 2px; border: 1px solid rgba(0,255,163,0.15);">[SENTIMENT: {sentiment_score:+.2f}]</span>
+                    <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #8E9299;">{relative_time.upper()}</span>
+                </div>
+            </div>
+            """
+        grid_html += "</div>"
+        st.markdown(grid_html, unsafe_allow_html=True)
 
 
 # --- TAB 2: QUANT RISK STRATEGY ---
 with tab2:
-    st.subheader("Neural Simulation Layer Consensus Metrics")
+    st.markdown('<div style="font-family: \'Space Grotesk\', sans-serif; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; margin-bottom: 4px;">[MODEL: NEURAL_SIMULATION_CONSENSUS]</div>', unsafe_allow_html=True)
     st.markdown(
         "Fuzzy agent decisions are continually governed by Python hardcoded compilations to defend against overconfidence."
     )
@@ -758,7 +1003,7 @@ with tab2:
     
     col_e1, col_e2 = st.columns(2)
     with col_e1:
-        st.markdown("### 🤖 Gen-AI Alpha Hunter Opinion")
+        st.markdown("### [SYS_AGENT: ALPHA_HUNTER_OPINION]")
         st.json(raw_ai_proposal)
         
         # Sizing model calculations
@@ -770,48 +1015,49 @@ with tab2:
         kelly_percentage = kelly_size
         
         st.markdown("---")
-        st.markdown("#### 📐 Mathematical Half-Kelly Position Sizing")
+        st.markdown("#### [MATH_MODEL: HALF_KELLY_SIZING]")
         st.markdown(
             f"**Execution Formula (Half-Kelly Criterion):**\n"
             f"$$f^* = 0.5 \\times \\frac{{b \\cdot p - q}}{{b}}$$\n\n"
             f"- Win Probability Anchor ($p$): **{sentiment_val * 100:.1f}%**\n"
             f"- Payoff Target Edge ($b$): **{risk_engine.b_risk_reward}**\n\n"
-            f"➡️ Calculated Neural Sizing Limit: <span style='font-family: \"JetBrains Mono\"; font-weight: bold; color: #00FFA3; font-size: 16px;'>{kelly_size}%</span>",
+            f"[SYS_OUT]: Calculated Neural Sizing Limit: <span style='font-family: \"JetBrains Mono\"; font-weight: bold; color: #00FFA3; font-size: 16px;'>{kelly_size}%</span>",
             unsafe_allow_html=True
         )
         
     with col_e2:
-        st.markdown("### 🛡️ Hard-Coded Decoupled Auditor Rules")
+        st.markdown("### [AUDITOR: HARD_RULES_EVAL]")
         
-        st.markdown(f"""
-        <div style="background: #0b0d10; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px; margin-bottom: 12px; font-family: 'JetBrains Mono', monospace;">
-            <div style="font-size: 10px; color: #8E9299; text-transform: uppercase;">Checking Outflow Guardrail</div>
-            <div style="font-size: 16px; font-weight: bold; color: #ffffff; margin-top: 4px;">${market_data.get('etf_flows_detailed', {}).get('net_inflow_today', 0.0)/1e6:.1f}M Inflow Limit</div>
-            <div style="font-size: 10px; color: #00FFA3; margin-top: 4px;">Threshold Target: > -$100.0M</div>
-        </div>
-        <div style="background: #0b0d10; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px; margin-bottom: 12px; font-family: 'JetBrains Mono', monospace;">
-            <div style="font-size: 10px; color: #8E9299; text-transform: uppercase;">Checking System Funding Leverage</div>
-            <div style="font-size: 16px; font-weight: bold; color: #ffffff; margin-top: 4px;">{market_data.get('funding_rates', 0.0)*100:.3f}% / Hour</div>
-            <div style="font-size: 10px; color: #00FFA3; margin-top: 4px;">Safety Limit Bounds: < 0.05%</div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Check 1: Outflow limit
+        net_inflow_m = market_data.get('etf_flows_detailed', {}).get('net_inflow_today', 0.0) / 1e6
+        outflow_lbl = "OUTFLOW OVERFLOW VETO ACTIVE" if net_inflow_m < -100.0 else "OUTFLOW LIMIT COMPLIANT"
+        st.markdown(render_quant_card(
+            "Outflow Guardrail", 
+            f"${net_inflow_m:.1f}M Inflow", 
+            f"{outflow_lbl} (> -100M Target)"
+        ), unsafe_allow_html=True)
         
-        st.markdown("#### Risk Decoupled Execution Verdict:")
-        if override_logs:
-            for log in override_logs:
-                st.error(log)
-            st.warning("Strategic allocation parameters overridden securely by client-side guardrails.")
-        else:
-            st.success("✓ ALL SYSTEM PARAMETERS COMPLIANT. Approved for instant execution.")
-            st.markdown(
-                "<span style='color:#00FFA3; font-family:\"JetBrains Mono\"'>Decision Verdict: APPROVED</span>",
-                unsafe_allow_html=True
-            )
+        st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+        
+        # Check 2: Funding leverage
+        funding_rate_val = market_data.get('funding_rates', 0.0)
+        funding_rate_pct = funding_rate_val * 100
+        leverage_lbl = "HIGH LEVERAGE VETO ACTIVE" if funding_rate_val > 0.05 else "FUNDING COMPLIANT"
+        st.markdown(render_quant_card(
+            "System Funding Leverage", 
+            f"{funding_rate_pct:.3f}% / Hour", 
+            f"{leverage_lbl} (< 0.05% Safety Bounds)"
+        ), unsafe_allow_html=True)
+        
+        st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+        
+        # Render custom scrolling log feeds matching Vercel terminal
+        st.markdown(render_neural_vault_logs(market_data, raw_ai_proposal, override_logs, black_swan_active), unsafe_allow_html=True)
 
 
 # --- TAB 3: PERFORMANCE BACKTEST ---
 with tab3:
-    st.subheader("Tactical Outperformance Benchmarking")
+    st.markdown('<div style="font-family: \'Space Grotesk\', sans-serif; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; margin-bottom: 4px;">[BACKTEST: TACTICAL_OUTPERFORMANCE]</div>', unsafe_allow_html=True)
     st.caption("Verifiable quantitative simulation showing Neural Vault tactical weighting vs. buy-and-hold BTC benchmark.")
     
     df_perf = perf_manager.get_historical_benchmark(days=7, sentiment_score=market_data.get("sentiment_score", 0.58))
@@ -846,7 +1092,7 @@ with tab3:
 
 # --- TAB 4: AUTONOMOUS LEDGER ---
 with tab4:
-    st.subheader("🛡️ Verifiable Trade Allocation Ledger")
+    st.markdown('<div style="font-family: \'Space Grotesk\', sans-serif; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; margin-bottom: 4px;">[LEDGER: VERIFIABLE_TRADE_ALLOCATIONS]</div>', unsafe_allow_html=True)
     st.caption("Active consensus trades recorded securely and computed dynamically relative to spot market data.")
     
     current_prices = market_data.get("crypto_prices", {"BTC": 64500.0, "ETH": 3480.0, "SOL": 155.0, "LINK": 18.40, "STABLES": 1.0, "USDC": 1.0})
@@ -924,7 +1170,7 @@ with tab4:
 try:
     @st.dialog("Deploy White-Label Custom Instance Shard")
     def deploy_node_modal():
-        st.markdown("🌐 **Configure white-label neural infrastructure parameters:**")
+        st.markdown("**[PROVISION] Configure white-label neural infrastructure parameters:**")
         st.caption("Each deployed VPS shard establishes an isolated execution path sync locked to multi-sig hardware wallets.")
         
         with st.form("modal_deploy_form", clear_on_submit=True):
@@ -938,11 +1184,11 @@ try:
             
             st.markdown("""
             <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #8E9299; margin-bottom: 5px; line-height: 1.3;">
-                🔒 SECURITY ATTESTATION: Node provisioning locks parameters to your non-custodial synchronizer. Change requests can only be validated through hardware signatures.
+                [SECURITY_SHIELD] Node provisioning locks parameters to your non-custodial synchronizer. Change requests can only be validated through hardware signatures.
             </div>
             """, unsafe_allow_html=True)
             
-            submitted = st.form_submit_button("🔌 INITIATE DEPLOYMENT HANDSHAKE")
+            submitted = st.form_submit_button("[INIT_DEPLOYMENT_HANDSHAKE]")
             if submitted:
                 if not node_name:
                     st.error("Identity Name parameter cannot be empty.")
@@ -968,7 +1214,7 @@ try:
                     })
                     st.toast("Establishing live encrypted sync tunneling...")
                     time.sleep(1.0)
-                    st.success(f"✓ White-label instance successfully provisioned at ID: NODE-00{new_id}!")
+                    st.success(f"[SUCCESS] White-label instance successfully provisioned at ID: NODE-00{new_id}!")
                     time.sleep(1.0)
                     st.rerun()
 except Exception:
@@ -976,14 +1222,14 @@ except Exception:
         pass
 
 with tab5:
-    st.subheader("🌐 Empire White-Label Scaling Portal")
+    st.markdown('<div style="font-family: \'Space Grotesk\', sans-serif; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; margin-bottom: 4px;">[CLUSTER: EMPIRE_WHITE_LABEL_SCALING]</div>', unsafe_allow_html=True)
     st.caption("Deploy and run standalone non-custodial sovereign vault cluster instances to trade on-chain.")
     
     col_deploy1, col_deploy2 = st.columns([2.5, 1])
     with col_deploy1:
         st.markdown("### Coordinated Infrastructure Hubs:")
     with col_deploy2:
-        if st.button("🔌 Deploy New Vault Node (+)", use_container_width=True):
+        if st.button("[SYS_CMD: DEPLOY_NODE (+)]", use_container_width=True):
             try:
                 deploy_node_modal()
             except Exception:
@@ -999,21 +1245,21 @@ with tab5:
                 for ast in node.get("assets", ["BTC", "ETH"])
             ])
             st.markdown(f"""
-            <div style="background-color: #0b0d10; border: 1px solid rgba(255,255,255,0.05); padding: 16px; border-radius: 12px; margin-bottom: 12px;">
+            <div style="background-color: #0d0d0d; border: 1px solid #1a1a1a; padding: 16px; border-radius: 4px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <span style="background-color: rgba(0, 255, 163, 0.08); border: 1px solid rgba(0, 255, 163, 0.15); color: #00FFA3; font-family: 'JetBrains Mono', monospace; font-size: 9px; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; font-weight: bold;">
+                    <span style="background-color: rgba(0, 255, 163, 0.08); border: 1px solid rgba(0, 255, 163, 0.15); color: #00FFA3; font-family: 'JetBrains Mono', monospace; font-size: 9px; padding: 2px 6px; border-radius: 2px; text-transform: uppercase; font-weight: bold;">
                         {node['mandate']}
                     </span>
                     <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #8E9299; font-weight: bold;">NODE-00{node['id']}</span>
                 </div>
-                <h4 style="margin: 4px 0 6px 0; font-family: 'Space Grotesk', sans-serif; font-size: 15px; color: #ffffff; font-weight: bold;">{node['name']}</h4>
+                <h4 style="margin: 4px 0 6px 0; font-family: 'Space Grotesk', sans-serif; font-size: 15px; color: #ffffff; font-weight: bold; line-height: 1.2;">{node['name']}</h4>
                 <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8E9299; margin-bottom: 8px;">
                     Allocation Target: <span style="color: #00FFA3; font-weight: bold;">${node['aum']:,}</span>
                 </div>
                 <div style="margin-bottom: 10px;">
                     {assets_badges}
                 </div>
-                <div style="border-top: 1px solid rgba(255,255,255,0.04); padding-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #8E9299;">
+                <div style="border-top: 1px solid #1a1a1a; padding-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #8E9299;">
                     BOUND OWNER: <span style="color: #00FFA3; font-weight: bold;">{owner_display}</span>
                 </div>
                 <div style="margin-top: 6px; display: flex; align-items: center; gap: 4px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #00FFA3;">
@@ -1029,7 +1275,7 @@ st.markdown("---")
 is_w_disabled = not st.session_state.get("wallet_connected", False)
 w_tooltip = "Connect non-custodial hardware wallet via 'Connect Vault' in header to authorize transaction execution." if is_w_disabled else "Authorize and settle Neural Rebalance Order on-chain now."
 
-btn_label = "AUTHORIZATION REQUIRED: Connect Wallet" if is_w_disabled else "EXECUTE NEURAL REBALANCE"
+btn_label = "[AUTH_REQUIRED: CONNECT_WALLET]" if is_w_disabled else "[SYS_CMD: EXECUTE_NEURAL_REBALANCE]"
 
 if st.button(btn_label, disabled=is_w_disabled, help=w_tooltip, use_container_width=True):
     with st.status("Executing trade signatures..."):
@@ -1042,6 +1288,6 @@ if st.button(btn_label, disabled=is_w_disabled, help=w_tooltip, use_container_wi
         time.sleep(0.8)
         
     st.balloons()
-    st.success("✓ Transaction authorized and successfully settled on Block: 19482710! Autonomous Ledger synchronized.")
+    st.success("[SETTLED] Transaction authorized and successfully settled on Block: 19482710! Autonomous Ledger synchronized.")
     time.sleep(1.0)
     st.rerun()
