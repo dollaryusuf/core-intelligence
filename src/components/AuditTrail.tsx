@@ -75,7 +75,7 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({ isOpen, onClose, vault, 
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 h-full w-full max-w-lg bg-[#0F1115] border-l border-white/10 z-[70] flex flex-col font-mono shadow-2xl"
+            className="fixed top-0 right-0 h-full w-full max-w-lg bg-[#0d0d0d] border-l border-[#1a1a1a] z-[70] flex flex-col font-mono shadow-2xl"
           >
             {/* Header */}
             <div className="p-6 border-b border-white/10 flex items-center justify-between bg-black/20">

@@ -165,15 +165,15 @@ export const VaultIntelligenceNode: React.FC<VaultIntelligenceNodeProps> = ({ va
       {/* Header Info */}
       <div className="flex items-end justify-between gap-8 pb-4 border-b border-white/5">
         <div className="space-y-1">
-          <h2 className="text-4xl font-bold tracking-tighter uppercase">{vault.name} Intelligence Node</h2>
-          <p className="text-muted text-sm font-medium">Autonomous Treasury Management via SoSo-Vault Agent v4.2</p>
+          <h2 className="text-xl font-bold tracking-tight text-white uppercase">{vault.name} Intelligence Node</h2>
+          <p className="text-muted text-xs font-medium uppercase tracking-widest">Autonomous Treasury Management via SoSo-Vault Agent v4.2</p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-mono text-muted uppercase">Total Node AUM</p>
-          <p className="text-3xl font-bold font-mono tracking-tighter text-accent">${vault.aum.toLocaleString()}</p>
+          <p className="text-[10px] font-mono uppercase tracking-widest text-muted">Total Node AUM</p>
+          <p className="text-xl font-bold font-mono tracking-tight text-accent mt-1">${vault.aum.toLocaleString()}</p>
           {vault.ownerAddress && (
-            <p className="text-[10px] font-mono text-white/50 mt-1 uppercase">
-              BOUND OWNER: <span className="text-accent underline font-bold">{vault.ownerAddress.slice(0, 6)}...{vault.ownerAddress.slice(-4)}</span>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-muted mt-2">
+              BOUND OWNER: <span className="text-accent underline font-bold font-mono text-[10px]">{vault.ownerAddress.slice(0, 6)}...{vault.ownerAddress.slice(-4)}</span>
             </p>
           )}
         </div>
@@ -182,9 +182,9 @@ export const VaultIntelligenceNode: React.FC<VaultIntelligenceNodeProps> = ({ va
       <div className="grid grid-cols-12 gap-6">
         {/* Holdings Table */}
         <div className="col-span-12 lg:col-span-8 space-y-6">
-          <div className="bg-card border border-white/5 rounded-2xl overflow-hidden">
+          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden hover:border-[#00FFA3] transition-colors">
             <div className="p-6 border-b border-white/5 flex items-center justify-between">
-               <h3 className="text-xs font-mono font-bold uppercase tracking-widest flex items-center gap-2">
+               <h3 className="text-xs font-mono font-bold uppercase tracking-widest flex items-center gap-2 text-white">
                  <Database size={14} className="text-accent" />
                  Neural Holdings Table
                </h3>
@@ -203,11 +203,11 @@ export const VaultIntelligenceNode: React.FC<VaultIntelligenceNodeProps> = ({ va
               <table className="w-full text-left font-mono">
                 <thead>
                   <tr className="bg-white/[0.02] border-b border-white/5">
-                    <th className="px-6 py-4 text-[10px] text-muted uppercase font-bold">Asset</th>
-                    <th className="px-6 py-4 text-[10px] text-muted uppercase font-bold text-right">Balance</th>
-                    <th className="px-6 py-4 text-[10px] text-muted uppercase font-bold text-right">USD Value</th>
-                    <th className="px-6 py-4 text-[10px] text-muted uppercase font-bold text-right">24h Perf</th>
-                    <th className="px-6 py-4 text-[10px] text-muted uppercase font-bold text-right">Drift</th>
+                    <th className="px-6 py-4 text-[10px] text-muted uppercase tracking-widest font-bold">Asset</th>
+                    <th className="px-6 py-4 text-[10px] text-muted uppercase tracking-widest font-bold text-right">Balance</th>
+                    <th className="px-6 py-4 text-[10px] text-muted uppercase tracking-widest font-bold text-right">USD Value</th>
+                    <th className="px-6 py-4 text-[10px] text-muted uppercase tracking-widest font-bold text-right">24h Perf</th>
+                    <th className="px-6 py-4 text-[10px] text-muted uppercase tracking-widest font-bold text-right">Drift</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -219,20 +219,20 @@ export const VaultIntelligenceNode: React.FC<VaultIntelligenceNodeProps> = ({ va
                             {h.asset[0]}
                           </div>
                           <div>
-                            <p className="text-sm font-bold text-white group-hover:text-accent transition-colors">{h.asset}</p>
-                            <p className="text-[9px] text-muted uppercase">Native Chain</p>
+                            <p className="text-sm font-bold text-white group-hover:text-accent transition-colors font-mono">{h.asset}</p>
+                            <p className="text-[9px] text-muted uppercase tracking-widest font-mono">Native Chain</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right text-sm">
-                        <span className="font-mono-numbers text-white/80">{h.balance.toLocaleString()}</span>
+                        <span className="font-mono text-white/80">{h.balance.toLocaleString()}</span>
                       </td>
                       <td className="px-6 py-4 text-right text-sm">
-                        <span className="font-mono-numbers text-white/80">${h.value.toLocaleString()}</span>
+                        <span className="font-mono text-white/80">${h.value.toLocaleString()}</span>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <span className={cn(
-                          "text-[11px] font-bold flex items-center justify-end gap-1 font-mono-numbers",
+                          "text-[11px] font-bold flex items-center justify-end gap-1 font-mono",
                           h.performance >= 0 ? "text-accent" : "text-danger"
                         )}>
                           {h.performance >= 0 ? "+" : ""}{h.performance}%
@@ -244,7 +244,7 @@ export const VaultIntelligenceNode: React.FC<VaultIntelligenceNodeProps> = ({ va
                             {(isRiskHigh || parseFloat(h.drift || "0") > drawdown) && (
                               <span title="New guardrail may trigger automated liquidation" className="text-orange-500 animate-pulse text-[10px]">⚠️</span>
                             )}
-                            <span className="text-[10px] text-accent/80 font-mono-numbers font-bold">
+                            <span className="text-[10px] text-accent/80 font-mono font-bold">
                               {h.drift || (Math.abs(h.weight - h.target)).toFixed(1)}%
                             </span>
                           </div>
@@ -267,15 +267,15 @@ export const VaultIntelligenceNode: React.FC<VaultIntelligenceNodeProps> = ({ va
           </div>
 
           {/* Alpha Curve Chart */}
-          <div className="bg-card border border-white/5 rounded-2xl p-6">
+          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl p-6 hover:border-[#00FFA3] transition-colors">
             <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xs font-mono font-bold uppercase tracking-widest flex items-center gap-2">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-widest flex items-center gap-2 text-white">
                 <TrendingUp size={14} className="text-accent" />
                 Vault-Specific Alpha Curve (30D)
               </h3>
               <div className="text-right">
-                <span className="text-[10px] font-mono text-muted uppercase block">Cumulative Alpha</span>
-                <span className="text-sm font-bold text-accent font-mono-numbers">+{vault.alpha_vs_btc}% vs BTC</span>
+                <span className="text-[10px] font-mono text-muted uppercase tracking-widest block">Cumulative Alpha</span>
+                <span className="text-sm font-bold text-accent font-mono">+{vault.alpha_vs_btc}% vs BTC</span>
               </div>
             </div>
             <div className="h-[280px]">
@@ -288,8 +288,8 @@ export const VaultIntelligenceNode: React.FC<VaultIntelligenceNodeProps> = ({ va
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff03" vertical={false} />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#8E9299' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#8E9299' }} />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#8E9299', fontFamily: 'monospace' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#8E9299', fontFamily: 'monospace' }} />
                   <RechartsTooltip 
                     contentStyle={{ backgroundColor: '#15171C', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                     itemStyle={{ color: '#00FF9C', fontFamily: 'monospace', fontSize: '12px' }}
@@ -310,16 +310,16 @@ export const VaultIntelligenceNode: React.FC<VaultIntelligenceNodeProps> = ({ va
 
         {/* Sidebar Settings */}
         <div className="col-span-12 lg:col-span-4 space-y-6">
-          <div className="bg-card border border-white/5 rounded-2xl p-6 space-y-8">
+          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl p-6 space-y-8 hover:border-[#00FFA3] transition-colors">
             <div className="flex items-center gap-2">
               <Settings size={18} className="text-accent" />
-              <h4 className="text-sm font-bold uppercase tracking-tight">Node Guardrails</h4>
+              <h4 className="text-sm font-bold uppercase tracking-widest text-white">Node Guardrails</h4>
             </div>
 
             <div className="space-y-6">
               <div className="space-y-4">
                 <div className="flex justify-between items-end">
-                  <label className="text-[10px] font-mono text-muted uppercase">Max Drawdown Limit</label>
+                  <label className="text-[10px] font-mono text-muted uppercase tracking-widest">Max Drawdown Limit</label>
                   <span className="text-xs font-bold font-mono text-white">{drawdown}%</span>
                 </div>
                 <input 
@@ -331,18 +331,18 @@ export const VaultIntelligenceNode: React.FC<VaultIntelligenceNodeProps> = ({ va
                   onChange={(e) => setDrawdown(parseInt(e.target.value))}
                   className="w-full accent-accent bg-white/5 h-1.5 rounded-full appearance-none cursor-pointer"
                 />
-                <p className="text-[9px] text-muted italic font-mono">Agent will auto-liquidate to USDC if breaches threshold.</p>
+                <p className="text-[9px] text-muted italic font-mono uppercase tracking-widest">Agent will auto-liquidate to USDC if breaches threshold.</p>
               </div>
 
               <div className="space-y-4 pt-6 border-t border-white/5">
-                <label className="text-[10px] font-mono text-muted uppercase block">Rebalance Frequency</label>
+                <label className="text-[10px] font-mono text-muted uppercase tracking-widest block">Rebalance Frequency</label>
                 <div className="grid grid-cols-3 gap-2">
                   {['Daily', 'Weekly', 'Neural'].map((f) => (
                     <button
                       key={f}
                       onClick={() => setFrequency(f)}
                       className={cn(
-                        "py-2 text-[10px] font-serif italic border rounded-lg transition-all",
+                        "py-2 text-[10px] font-mono border rounded-lg transition-all uppercase tracking-widest",
                         frequency === f ? "bg-accent border-accent text-black font-bold" : "bg-white/5 border-white/10 text-muted"
                       )}
                     >
@@ -353,7 +353,7 @@ export const VaultIntelligenceNode: React.FC<VaultIntelligenceNodeProps> = ({ va
               </div>
 
               <div className="space-y-4 pt-6 border-t border-white/5">
-                <label className="text-[10px] font-mono text-muted uppercase block">Auditor Strictness</label>
+                <label className="text-[10px] font-mono text-muted uppercase tracking-widest block font-mono">Auditor Strictness</label>
                 <select 
                   value={strictness}
                   onChange={(e) => setStrictness(e.target.value)}
