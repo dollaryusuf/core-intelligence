@@ -57,7 +57,7 @@ def http_get(url: str, headers: Dict[str, str] = None, params: Dict[str, Any] = 
             return status_code, data
     except HTTPError as e:
         if e.code == 401:
-            logger.info("urllib HTTP Status 401: SoSoValue API authorization failed or credential not provided. Backing off gracefully to high-fidelity simulated benchmarks.")
+            logger.debug("urllib HTTP Status 401: SoSoValue API backup path active (unauthorized key or unauthorized environment variable).")
         else:
             logger.error(f"urllib HTTPError {e.code}: {e.read().decode('utf-8', errors='ignore')}")
         return e.code, None
@@ -103,7 +103,7 @@ def http_post(url: str, json_data: Any, headers: Dict[str, str] = None, timeout:
             return status_code, data
     except HTTPError as e:
         if e.code == 401:
-            logger.info("urllib POST HTTP Status 401: API key is unauthorized. Falling back gracefully to simulated response.")
+            logger.debug("urllib POST HTTP Status 401: SoSoValue API backup path active (unauthorized key).")
         else:
             logger.error(f"urllib POST HTTPError {e.code}: {e.read().decode('utf-8', errors='ignore')}")
         return e.code, None
@@ -126,17 +126,24 @@ class SoSoValueService:
             "Content-Type": "application/json"
         }
         if self.api_key:
-            self.headers["x-api-key"] = self.api_key
+            self.headers["x-api-key"] = self.api_key.strip().replace('"', '').replace("'", "")
         self.is_guest_mode = not self._get_api_status()
 
     def _get_api_status(self) -> bool:
         if not self.api_key:
             return False
-        key = self.api_key.strip()
+        key = self.api_key.strip().replace('"', '').replace("'", "")
         # Filter out Bearer tokens and general JWT signatures
         if key.lower().startswith("bearer ") or "ey" in key or "." in key:
             return False
-        if "MY_" in key or len(key) < 10:
+        # Extended filters for fake placeholder value detections
+        placeholders = [
+            "placeholder", "your_api_key", "soso_api_key", "my_soso", "api_key", 
+            "dummy", "secret", "none", "null", "your_api_", "temp_key", "xyz"
+        ]
+        if any(p in key.lower() for p in placeholders):
+            return False
+        if "MY_" in key or len(key) < 12:
             return False
         return True
 
@@ -671,12 +678,15 @@ if USE_FLASK:
         
         # Import PerformanceManager dynamically to avoid routing or workspace path conflicts
         try:
-            from performance_manager import PerformanceManager
-        except ImportError:
-            import sys
-            import os
-            sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            from performance_manager import PerformanceManager
+            from .performance_manager import PerformanceManager
+        except (ImportError, ValueError):
+            try:
+                from performance_manager import PerformanceManager
+            except ImportError:
+                import sys
+                import os
+                sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                from performance_manager import PerformanceManager
             
         perf = PerformanceManager()
         

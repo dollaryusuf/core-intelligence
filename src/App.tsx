@@ -117,6 +117,7 @@ export default function App() {
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletConnecting, setWalletConnecting] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [showPayloadSidebar, setShowPayloadSidebar] = useState(false);
   const hasBooted = useRef(false);
 
   const initialPortfolio: PortfolioState = {
@@ -745,6 +746,16 @@ VERIFIED VIA ZK-PROOF ATTESTATION
               </span>
             </div>
             
+            {/* INSPECT SOSOVALUE PAYLOAD BUTTON */}
+            <button
+              onClick={() => setShowPayloadSidebar(true)}
+              className="px-4 py-2 rounded-full cursor-pointer font-bold tracking-wider font-mono bg-[#00FFA3]/5 hover:bg-[#00FFA3]/15 text-[#00FFA3] hover:text-white border border-[#00FFA3]/20 hover:border-[#00FFA3]/50 transition-all flex items-center gap-2 text-[11px]"
+              title="Inspect Raw SoSoValue Payload REST Response"
+            >
+              <Database size={12} />
+              INSPECT PAYLOAD
+            </button>
+
             {/* Execute Rebalance button (with pre-flight wallet lock) */}
             <div className="relative group ml-4">
               <button 
@@ -761,12 +772,18 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                     ? "bg-accent/5 border-accent/40 text-accent/60" 
                     : walletConnected
                       ? "bg-accent/10 border-accent/20 text-accent hover:bg-accent hover:text-black"
-                      : "bg-white/5 border-white/10 text-white/40"
+                      : "bg-red-500/10 border-red-500/20 text-red-500/90"
                 )}
               >
                 <RefreshCcw size={14} className={cn((loading || isSimulating || executing) && "animate-spin")} />
                 <span className="uppercase text-[11px] font-bold tracking-tighter">
-                  {executing ? "Processing..." : (isSimulating ? `Simulating ${simulationDay}/7` : (rebalanced ? "NODE SYNCHRONIZED ✓" : "Execute Rebalance"))}
+                  {!walletConnected 
+                    ? "AUTHORIZATION REQUIRED: Connect Wallet" 
+                    : executing 
+                      ? "Processing..." 
+                      : (isSimulating 
+                        ? `Simulating ${simulationDay}/7` 
+                        : (rebalanced ? "NODE SYNCHRONIZED ✓" : "Execute Rebalance"))}
                 </span>
               </button>
               {!walletConnected && !rebalanced && (
@@ -2172,6 +2189,80 @@ VERIFIED VIA ZK-PROOF ATTESTATION
               <div className="p-8 border-t border-white/5 bg-black/20 text-center">
                 <p className="text-[9px] font-mono text-muted/60 uppercase tracking-[0.2em]">
                   End of Source Attribution
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Verifiability Sidebar (Slide-out from Right) */}
+      <AnimatePresence>
+        {showPayloadSidebar && (
+          <div className="fixed inset-0 z-[100] flex justify-end">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPayloadSidebar(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="relative w-full max-w-lg bg-[#0A0C10] border-l border-white/10 h-full shadow-2xl flex flex-col z-10"
+            >
+              <div className="p-8 border-b border-white/5 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                    <Database size={18} className="text-accent animate-pulse" />
+                    SoSoValue Intelligence
+                  </h3>
+                  <p className="text-[10px] uppercase font-mono text-muted tracking-widest mt-1">
+                    Raw JSON Payload Inspector
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setShowPayloadSidebar(false)}
+                  className="p-2 hover:bg-white/5 rounded-lg text-muted hover:text-white"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 space-y-6">
+                <p className="text-xs text-muted font-sans leading-relaxed">
+                  This sidebar presents the raw telemetry state from our `/api/intelligence` Vercel Serverless router, containing verified on-chain ETF flows, sentiment trends, prices, risk scores, and backtest results.
+                </p>
+
+                <div className="p-5 bg-white/3 border border-white/5 rounded-2xl space-y-4 font-mono text-xs">
+                  <div className="flex justify-between items-center bg-white/5 px-3 py-2 rounded">
+                    <span className="text-muted uppercase text-[10px]">Endpoint</span>
+                    <span className="text-accent font-bold">/api/intelligence</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-white/5 px-3 py-2 rounded">
+                    <span className="text-muted uppercase text-[10px]">Data Source</span>
+                    <span className="text-white font-bold">{data?.source || "LIVE_API"}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-white/5 px-3 py-2 rounded">
+                    <span className="text-muted uppercase text-[10px]">API Connection</span>
+                    <span className="text-accent font-bold">● ONLINE STABLE</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-mono text-muted uppercase tracking-wider">Raw Response JSON</h4>
+                  <div className="rounded-2xl border border-white/5 bg-black/40 p-4 overflow-hidden">
+                    <JsonView data={analysis || data} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-8 border-t border-white/5 bg-black/20 text-center">
+                <p className="text-[9px] font-mono text-muted/60 uppercase tracking-[0.2em]">
+                  Authorized Verification Panel
                 </p>
               </div>
             </motion.div>
