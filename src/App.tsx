@@ -775,16 +775,16 @@ VERIFIED VIA ZK-PROOF ATTESTATION
           <div className="flex items-center gap-6 font-mono text-xs">
             <div className="flex flex-col items-end">
               <span className="text-muted text-[10px] uppercase">Empire AUM</span>
-              <span className="text-white font-bold font-mono">
-                ${(intelligence?.empire_stats?.aum !== undefined ? intelligence.empire_stats.aum : (managedData?.totalAUM || 142500000.00))?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
+  <span className="text-white font-bold font-mono text-lg">
+  ${intelligence ? intelligence.empire_stats.aum.toLocaleString() : "0,000,000"}
+</span>
             </div>
             <div className="h-8 w-[1px] bg-white/10" />
             <div className="flex flex-col items-end">
               <span className="text-muted text-[10px] uppercase">Daily Revenue</span>
-              <span className="text-accent font-bold font-mono-numbers">
-                ${(intelligence?.empire_stats?.daily_revenue !== undefined ? intelligence.empire_stats.daily_revenue : (managedData ? (managedData.totalAUM * 0.02) / 365 : 7808.21))?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
+    <span className="text-accent font-bold font-mono-numbers text-lg">
+  ${intelligence ? intelligence.empire_stats.daily_revenue.toLocaleString(undefined, { minimumFractionDigits: 2 }) : "0.00"}
+</span>
             </div>
             <div className="h-8 w-[1px] bg-white/10" />
             <div className="flex flex-col items-end">
