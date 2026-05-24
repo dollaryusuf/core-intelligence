@@ -8,6 +8,188 @@ import json
 import re
 from datetime import datetime, timedelta
 
+# Set page configurations as the first command in Streamlit
+st.set_page_config(
+    page_title="SOSO Vault",
+    layout="wide",
+)
+
+# Pin the visual global styling block at the very top to hide Streamlit header and footer immediately
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap');
+
+/* Remove Streamlit top decoration and white header bar */
+[data-testid="stHeader"] {
+    display: none !important;
+}
+footer {
+    visibility: hidden !important;
+}
+#MainMenu {
+    visibility: hidden !important;
+}
+
+.stApp { 
+    background-color: #050505 !important; 
+    color: #e0e2e5; 
+    font-family: 'Space Grotesk', sans-serif; 
+}
+
+/* Zero out the padding for .block-container */
+.block-container {
+    padding: 0px !important;
+    max-width: 100% !important;
+}
+
+/* Spacing inside vertical blocks to balance out the 0 margin of block-container */
+div[data-testid="stVerticalBlock"] {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+}
+
+/* Keep sidebar with clean padding */
+[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+}
+
+/* Code and Technical typography */
+span, p, table, h1, h2, h3, h4, h5, h6, input, div, button {
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+.font-mono-tech {
+    font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Flat, high-contrast neon green with black text buttons */
+button[data-baseweb="button"], .stButton button, div.stButton > button, div[data-testid="stFormSubmitButton"] > button {
+    background-color: #00FFA3 !important;
+    color: #050505 !important;
+    border: 1px solid #00FFA3 !important;
+    border-radius: 0px !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    padding: 0.6rem 1.2rem !important;
+    transition: all 0.1s ease-in-out !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    height: 38px !important;
+    cursor: pointer !important;
+}
+button[data-baseweb="button"]:hover, .stButton button:hover, div.stButton > button:hover, div[data-testid="stFormSubmitButton"] > button:hover {
+    background-color: #050505 !important;
+    color: #00FFA3 !important;
+    border: 1px solid #00FFA3 !important;
+}
+button[data-baseweb="button"]:disabled, .stButton button:disabled, div.stButton > button:disabled, div[data-testid="stFormSubmitButton"] > button:disabled {
+    background-color: rgba(0, 255, 163, 0.04) !important;
+    color: rgba(255, 163, 0.3) !important;
+    border: 1px solid rgba(0, 255, 163, 0.15) !important;
+    cursor: not-allowed !important;
+}
+
+/* Sidebar styled as a flat technical console terminal */
+[data-testid="stSidebar"] {
+    background-color: #0d0d0d !important;
+    border-right: 1px solid #1a1a1a !important;
+}
+[data-testid="stSidebarCloseButton"] {
+    color: #00FFA3 !important;
+}
+
+/* Tabs: Uppercase JetBrains Mono with style matching #00FFA3, zero border lines */
+div[data-testid="stTabBar"] button {
+    text-transform: uppercase !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    border: none !important;
+    background-color: transparent !important;
+    color: #8E9299 !important;
+}
+div[data-testid="stTabBar"] button[aria-selected="true"] {
+    color: #00FFA3 !important;
+    border-bottom: 2px solid #00FFA3 !important;
+}
+div[data-testid="stTabBar"] {
+    border-bottom: none !important;
+}
+div[data-baseweb="tab-highlight"] {
+    background-color: #00FFA3 !important;
+}
+div[data-baseweb="tab-border"] {
+    background-color: transparent !important;
+}
+button[data-baseweb="tab"] {
+    text-transform: uppercase !important;
+    font-weight: 600 !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    border-bottom: none !important;
+}
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: #00FFA3 !important;
+    border-bottom: 2px solid #00FFA3 !important;
+}
+
+.status-live { color: #00FFA3; font-weight: bold; font-family: 'JetBrains Mono', monospace; }
+.status-sim { color: #f59e0b; font-weight: bold; font-family: 'JetBrains Mono', monospace; }
+
+/* Pulses configuration */
+@keyframes pulse-emerald-glow {
+    0% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 4px #00FFA3; }
+    50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 12px #00FFA3; }
+    100% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 4px #00FFA3; }
+}
+@keyframes pulse-amber-glow {
+    0% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 4px #f59e0b; }
+    50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 12px #f59e0b; }
+    100% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 4px #f59e0b; }
+}
+
+.pulse-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+.pulse-emerald {
+    background-color: #00FFA3;
+    animation: pulse-emerald-glow 2s infinite ease-in-out;
+}
+
+.pulse-amber {
+    background-color: #f59e0b;
+    animation: pulse-amber-glow 2s infinite ease-in-out;
+}
+
+/* Black styling overrides for Streamlit elements */
+div[data-testid="column"] button {
+    border-radius: 0px !important;
+}
+
+.ledger-card {
+    background-color: #0d0d0d;
+    border: 1px solid #1a1a1a;
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+}
+.ledger-card:hover {
+    border-color: #00FFA3;
+    box-shadow: 0 0 15px rgba(0, 255, 163, 0.1);
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Avoid SSL certificate validation issues
 os.environ["NODE_TLS_REJECT_UNAUTHORIZED"] = "0"
 
@@ -576,181 +758,6 @@ def render_neural_vault_logs(market_state, raw_ai, override_logs, black_swan_act
     """
     return terminal_html
 
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap');
-    
-    /* Remove Streamlit top decoration and white header bar */
-    [data-testid="stHeader"] {
-        display: none !important;
-    }
-    footer {
-        visibility: hidden !important;
-    }
-    #MainMenu {
-        visibility: hidden !important;
-    }
-    
-    .stApp { 
-        background-color: #050505 !important; 
-        color: #e0e2e5; 
-        font-family: 'Space Grotesk', sans-serif; 
-    }
-    
-    /* Zero out the padding for .block-container */
-    .block-container {
-        padding: 0px !important;
-        max-width: 100% !important;
-    }
-    
-    /* Spacing inside vertical blocks to balance out the 0 margin of block-container */
-    div[data-testid="stVerticalBlock"] {
-        padding-left: 24px !important;
-        padding-right: 24px !important;
-    }
-    
-    /* Keep sidebar with clean padding */
-    [data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
-        padding-left: 12px !important;
-        padding-right: 12px !important;
-    }
-    
-    /* Code and Technical typography */
-    span, p, table, h1, h2, h3, h4, h5, h6, input, div, button {
-        font-family: 'Space Grotesk', sans-serif;
-    }
-    
-    .font-mono-tech {
-        font-family: 'JetBrains Mono', monospace !important;
-    }
-    
-    /* Flat, high-contrast neon green with black text buttons */
-    button[data-baseweb="button"], .stButton button, div.stButton > button, div[data-testid="stFormSubmitButton"] > button {
-        background-color: #00FFA3 !important;
-        color: #050505 !important;
-        border: 1px solid #00FFA3 !important;
-        border-radius: 0px !important;
-        font-family: 'JetBrains Mono', monospace !important;
-        font-size: 11px !important;
-        font-weight: 700 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.05em !important;
-        padding: 0.6rem 1.2rem !important;
-        transition: all 0.1s ease-in-out !important;
-        box-shadow: none !important;
-        width: 100% !important;
-        height: 38px !important;
-        cursor: pointer !important;
-    }
-    button[data-baseweb="button"]:hover, .stButton button:hover, div.stButton > button:hover, div[data-testid="stFormSubmitButton"] > button:hover {
-        background-color: #050505 !important;
-        color: #00FFA3 !important;
-        border: 1px solid #00FFA3 !important;
-    }
-    button[data-baseweb="button"]:disabled, .stButton button:disabled, div.stButton > button:disabled, div[data-testid="stFormSubmitButton"] > button:disabled {
-        background-color: rgba(0, 255, 163, 0.04) !important;
-        color: rgba(255, 163, 0.3) !important;
-        border: 1px solid rgba(0, 255, 163, 0.15) !important;
-        cursor: not-allowed !important;
-    }
-    
-    /* Sidebar styled as a flat technical console terminal */
-    [data-testid="stSidebar"] {
-        background-color: #0d0d0d !important;
-        border-right: 1px solid #1a1a1a !important;
-    }
-    [data-testid="stSidebarCloseButton"] {
-        color: #00FFA3 !important;
-    }
-    
-    /* Tabs: Uppercase JetBrains Mono with style matching #00FFA3, zero border lines */
-    div[data-testid="stTabBar"] button {
-        text-transform: uppercase !important;
-        font-family: 'JetBrains Mono', monospace !important;
-        font-size: 11px !important;
-        font-weight: 600 !important;
-        border: none !important;
-        background-color: transparent !important;
-        color: #8E9299 !important;
-    }
-    div[data-testid="stTabBar"] button[aria-selected="true"] {
-        color: #00FFA3 !important;
-        border-bottom: 2px solid #00FFA3 !important;
-    }
-    div[data-testid="stTabBar"] {
-        border-bottom: none !important;
-    }
-    div[data-baseweb="tab-highlight"] {
-        background-color: #00FFA3 !important;
-    }
-    div[data-baseweb="tab-border"] {
-        background-color: transparent !important;
-    }
-    button[data-baseweb="tab"] {
-        text-transform: uppercase !important;
-        font-weight: 600 !important;
-        font-family: 'JetBrains Mono', monospace !important;
-        border-bottom: none !important;
-    }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        color: #00FFA3 !important;
-        border-bottom: 2px solid #00FFA3 !important;
-    }
-    
-    .status-live { color: #00FFA3; font-weight: bold; font-family: 'JetBrains Mono', monospace; }
-    .status-sim { color: #f59e0b; font-weight: bold; font-family: 'JetBrains Mono', monospace; }
-    
-    /* Pulses configuration */
-    @keyframes pulse-emerald-glow {
-        0% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 4px #00FFA3; }
-        50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 12px #00FFA3; }
-        100% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 4px #00FFA3; }
-    }
-    @keyframes pulse-amber-glow {
-        0% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 4px #f59e0b; }
-        50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 12px #f59e0b; }
-        100% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 4px #f59e0b; }
-    }
-    
-    .pulse-dot {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        vertical-align: middle;
-        margin-right: 6px;
-    }
-    
-    .pulse-emerald {
-        background-color: #00FFA3;
-        animation: pulse-emerald-glow 2s infinite ease-in-out;
-    }
-    
-    .pulse-amber {
-        background-color: #f59e0b;
-        animation: pulse-amber-glow 2s infinite ease-in-out;
-    }
-    
-    /* Black styling overrides for Streamlit elements */
-    div[data-testid="column"] button {
-        border-radius: 0px !important;
-    }
-    
-    .ledger-card {
-        background-color: #0d0d0d;
-        border: 1px solid #1a1a1a;
-        border-radius: 4px;
-        padding: 16px;
-        margin-bottom: 12px;
-        transition: all 0.2s ease;
-    }
-    .ledger-card:hover {
-        border-color: #00FFA3;
-        box-shadow: 0 0 15px rgba(0, 255, 163, 0.1);
-    }
-    </style>
-""", unsafe_allow_html=True)
-
 
 # --- 7. SIDEBAR: VERIFIABILITY DRAWER & CONTROLS ---
 with st.sidebar:
@@ -859,52 +866,32 @@ else:
 vault_security_color = "#FF4B4B" if black_swan_active else "#00FFA3"
 vault_security_lbl = "BLACK SWAN CIRCUIT ACTIVE" if black_swan_active else "STATE COMPLIANT"
 
-header_html_data = f"""
-<div style="
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    padding: 16px 24px; 
-    background: linear-gradient(135deg, #0d0d0d 0%, #050505 100%); 
-    border-bottom: 1px solid #1a1a1a; 
-    margin-bottom: 24px;
-    width: calc(100% + 48px);
-    margin-left: -24px;
-    margin-top: -24px;
-">
-    <!-- Left Logo and Network attestation -->
-    <div style="display: flex; align-items: center; gap: 16px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <div style="width: 10px; height: 10px; background-color: {'#FF4B4B' if black_swan_active else '#00FFA3'}; box-shadow: 0 0 10px {'#FF4B4B' if black_swan_active else '#00FFA3'}; border-radius: 50%;"></div>
-            <span style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px; color: #ffffff; letter-spacing: -0.03em;">[SYS: SOSO_VAULT]</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8E9299; border-left: 1px solid #1a1a1a; padding-left: 16px;">
-            <span>CONN: INTEL_NODE-001 | </span>
-            <div class="pulse-dot {status_pulse_class}" style="width: 6px; height: 6px; display: inline-block;"></div>
-            <span style="color: {status_text_color}; font-weight: 700; letter-spacing: 0.05em;">[{status_label_str}]</span>
-        </div>
-    </div>
-    
-    <!-- Right Metrics group in nowrap with exact spacing -->
-    <div style="display: flex; align-items: center; gap: 32px;">
-        <!-- Metric 1: AUM -->
-        <div style="display: flex; flex-direction: column; align-items: flex-end;">
-            <span style="font-family: 'Space Grotesk', sans-serif; font-size: 9px; color: #8E9299; letter-spacing: 0.08em; text-transform: uppercase;">EMPIRE TOTAL AUM</span>
-            <span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: #ffffff; white-space: nowrap;">$18,659,275 <span style="color: #00FFA3; font-size: 10px; margin-left: 4px; font-weight: bold;">▲ +0.05%</span></span>
-        </div>
-        
-        <!-- Metric 2: Revenue -->
-        <div style="display: flex; flex-direction: column; align-items: flex-end;">
-            <span style="font-family: 'Space Grotesk', sans-serif; font-size: 9px; color: #8E9299; letter-spacing: 0.08em; text-transform: uppercase;">ACCRUED REVENUE</span>
-            <span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: #ffffff; white-space: nowrap;">$1,021.92 <span style="color: #00FFA3; font-size: 10px; margin-left: 4px; font-weight: bold;">▲ +2.1%</span></span>
-        </div>
-        
-        <!-- Metric 3: Vault Compliance -->
-        <div style="display: flex; flex-direction: column; align-items: flex-end;">
-            <span style="font-family: 'Space Grotesk', sans-serif; font-size: 9px; color: #8E9299; letter-spacing: 0.08em; text-transform: uppercase;">VAULT SECURITY MODE</span>
-            <span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: {vault_security_color}; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.02em;">{vault_security_lbl}</span>
-        </div>
-    </div>
+header_html_data = f"""<div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: linear-gradient(135deg, #0d0d0d 0%, #050505 100%); border-bottom: 1px solid #1a1a1a; margin-bottom: 24px; width: calc(100% + 48px); margin-left: -24px; margin-top: -24px;">
+<div style="display: flex; align-items: center; gap: 16px;">
+<div style="display: flex; align-items: center; gap: 8px;">
+<div style="width: 10px; height: 10px; background-color: {'#FF4B4B' if black_swan_active else '#00FFA3'}; box-shadow: 0 0 10px {'#FF4B4B' if black_swan_active else '#00FFA3'}; border-radius: 50%;"></div>
+<span style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px; color: #ffffff; letter-spacing: -0.03em;">[SYS: SOSO_VAULT]</span>
+</div>
+<div style="display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8E9299; border-left: 1px solid #1a1a1a; padding-left: 16px;">
+<span>CONN: INTEL_NODE-001 | </span>
+<div class="pulse-dot {status_pulse_class}" style="width: 6px; height: 6px; display: inline-block;"></div>
+<span style="color: {status_text_color}; font-weight: 700; letter-spacing: 0.05em;">[{status_label_str}]</span>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 32px;">
+<div style="display: flex; flex-direction: column; align-items: flex-end;">
+<span style="font-family: 'Space Grotesk', sans-serif; font-size: 9px; color: #8E9299; letter-spacing: 0.08em; text-transform: uppercase;">EMPIRE TOTAL AUM</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: #ffffff; white-space: nowrap;">$18,659,275 <span style="color: #00FFA3; font-size: 10px; margin-left: 4px; font-weight: bold;">▲ +0.05%</span></span>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-end;">
+<span style="font-family: 'Space Grotesk', sans-serif; font-size: 9px; color: #8E9299; letter-spacing: 0.08em; text-transform: uppercase;">ACCRUED REVENUE</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: #ffffff; white-space: nowrap;">$1,021.92 <span style="color: #00FFA3; font-size: 10px; margin-left: 4px; font-weight: bold;">▲ +2.1%</span></span>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-end;">
+<span style="font-family: 'Space Grotesk', sans-serif; font-size: 9px; color: #8E9299; letter-spacing: 0.08em; text-transform: uppercase;">VAULT SECURITY MODE</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: {vault_security_color}; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.02em;">{vault_security_lbl}</span>
+</div>
+</div>
 </div>
 """
 st.markdown(header_html_data, unsafe_allow_html=True)
