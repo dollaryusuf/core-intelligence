@@ -145,3 +145,17 @@ class PerformanceManager:
             })
             
         return pd.DataFrame(records)
+
+if __name__ == "__main__":
+    manager = PerformanceManager()
+    print("=== Testing Underwritten Performance manager ===")
+    bt = manager.run_simulated_backtest()
+    for day in bt:
+        print(f"Day {day['day']} ({day['date']}): Vault={day['vault_return']}% | BTC={day['btc_return']}% (Flow: {day['net_etf_flow']}M)")
+    
+    # Test logging a trade
+    print("\n--- Try Logging Test Ledger Entry ---")
+    tx = manager.log_trade("AI_INDEX", "REBALANCE", 25000, 1.45, "AI Narrative Velocity improved from 0.45 to 0.85")
+    print(f"Logged ID: {tx['id']}")
+    print("Ledger Length:", len(manager.get_ledger()))
+    print("=================================================")
