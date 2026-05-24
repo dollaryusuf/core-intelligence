@@ -1,6 +1,5 @@
-anthropic>=0.28.0
-pandas
+flask
 requests
+pandas
+anthropic
 python-dotenv
-Flask
-Flask-Cors
