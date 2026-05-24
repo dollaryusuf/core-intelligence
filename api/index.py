@@ -4,9 +4,9 @@ import json
 import random
 
 # Import your quant modules from the current directory
-from .sosovalue_service import SoSoValueService
-from .risk_engine import RiskEngine
-from .performance_manager import PerformanceManager
+from sosovalue_service import SoSoValueService
+from risk_engine import RiskEngine
+from performance_manager import PerformanceManager
 
 app = Flask(__name__)
 
