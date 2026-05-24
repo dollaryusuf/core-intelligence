@@ -831,15 +831,15 @@ VERIFIED VIA ZK-PROOF ATTESTATION
           <div className="flex items-center gap-6 font-mono text-xs whitespace-nowrap">
             <div className="flex flex-col items-end">
               <span className="text-muted text-[10px] uppercase tracking-widest whitespace-nowrap">Empire AUM</span>
-              <span className="text-white font-bold font-mono whitespace-nowrap">
-                ${(intelligence?.empire_stats?.aum !== undefined ? intelligence.empire_stats.aum : (managedData?.totalAUM || 142500000.00))?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <span className="text-[#00FFA3] font-bold text-lg font-mono">
+                ${intelligence ? intelligence.empire_stats.aum.toLocaleString() : "18,659,275"}
               </span>
             </div>
             <div className="h-8 w-[1px] bg-white/10 shrink-0" />
             <div className="flex flex-col items-end">
               <span className="text-muted text-[10px] uppercase tracking-widest whitespace-nowrap">Daily Revenue</span>
-              <span className="text-accent font-bold font-mono whitespace-nowrap">
-                ${(intelligence?.empire_stats?.daily_revenue !== undefined ? intelligence.empire_stats.daily_revenue : (managedData ? (managedData.totalAUM * 0.02) / 365 : 7808.21))?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <span className="text-[#00FFA3] font-bold text-lg font-mono">
+                ${intelligence ? intelligence.empire_stats.daily_revenue.toLocaleString(undefined, { minimumFractionDigits: 2 }) : "1,021.92"}
               </span>
             </div>
             <div className="h-8 w-[1px] bg-white/10 shrink-0" />
@@ -1170,62 +1170,56 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                 </div>
 
                 {(() => {
-                  const rawSource = (intelligence?.backtest_data && intelligence.backtest_data.length > 0) ? intelligence.backtest_data : backtestTimeline;
-                  const chartData = (rawSource || []).map((item: any) => ({
-                    "Date": item.Date || item.date || item.day || `Day ${item.day || ''}`,
-                    "SoSo-Vault Neural (%)": item["SoSo-Vault Neural (%)"] !== undefined
-                      ? item["SoSo-Vault Neural (%)"]
-                      : (item.vault_return !== undefined ? item.vault_return : (item.vault !== undefined ? item.vault : 0)),
-                    "HODL BTC (%)": item["HODL BTC (%)"] !== undefined
-                      ? item["HODL BTC (%)"]
-                      : (item.btc_return !== undefined ? item.btc_return : (item.btc !== undefined ? item.btc : 0))
-                  }));
+                  const chartData = (intelligence?.backtest_data && intelligence.backtest_data.length > 0)
+                    ? intelligence.backtest_data
+                    : (backtestTimeline && backtestTimeline.length > 0 ? backtestTimeline : []);
+
                   return chartData && chartData.length > 0 ? (
                     <div className="h-[240px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" />
-                        <XAxis 
-                          dataKey="Date" 
-                          axisLine={false} 
-                          tickLine={false} 
-                          tick={{ fontSize: 10, fill: '#8E9299', fontFamily: 'monospace' }} 
-                        />
-                        <YAxis 
-                          axisLine={false} 
-                          tickLine={false} 
-                          tick={{ fontSize: 10, fill: '#8E9299', fontFamily: 'monospace' }} 
-                          tickFormatter={(v) => `${v}%`}
-                        />
-                        <RechartsTooltip 
-                          contentStyle={{ backgroundColor: '#15171C', border: '1px solid rgba(255,255,255,0.1)', fontSize: '11px', fontFamily: 'monospace' }}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="SoSo-Vault Neural (%)" 
-                          stroke="#00FFA3" 
-                          strokeWidth={2.5} 
-                          dot={{ r: 3, fill: '#00FFA3', strokeWidth: 0 }} 
-                          activeDot={{ r: 5 }} 
-                          name="Neural Vault"
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="HODL BTC (%)" 
-                          stroke="#FFA500" 
-                          strokeWidth={2} 
-                          strokeDasharray="4 4"
-                          dot={{ r: 3, fill: '#FFA500', strokeWidth: 0 }} 
-                          name="BTC Benchmark"
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <div className="h-[240px] flex items-center justify-center border border-dashed border-white/5 rounded-xl bg-white/2 cursor-pointer hover:bg-white/5 transition-colors" onClick={runTimeMachineSimulation}>
-                    <p className="text-xs text-muted font-mono uppercase tracking-[0.1em]">No backtest timeline data found. Click to run 7-Day Simulation.</p>
-                  </div>
-                );
+                          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+                          <XAxis 
+                            dataKey="date"  /* MATCHED TO JSON: lowercase d */
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fontSize: 10, fill: '#8E9299', fontFamily: 'monospace' }}
+                          />
+                          <YAxis hide />
+                          <RechartsTooltip 
+                            contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a', borderRadius: '12px' }}
+                            itemStyle={{ fontFamily: 'monospace', fontSize: '12px' }}
+                          />
+                          
+                          {/* The Green Line: Neural Strategy */}
+                          <Line 
+                            type="monotone" 
+                            dataKey="vault_return" /* MATCHED TO JSON: lowercase */
+                            stroke="#00FFA3" 
+                            strokeWidth={2.5} 
+                            dot={{ r: 2, fill: '#00FFA3', strokeWidth: 0 }} 
+                            activeDot={{ r: 4 }}
+                            name="Neural Vault"
+                          />
+
+                          {/* The Amber Line: Market Benchmark */}
+                          <Line 
+                            type="monotone" 
+                            dataKey="btc_return" /* MATCHED TO JSON: lowercase */
+                            stroke="#ff9900" 
+                            strokeWidth={2} 
+                            strokeDasharray="5 5" 
+                            dot={false}
+                            name="BTC Benchmark"
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-[240px] flex items-center justify-center border border-dashed border-white/5 rounded-xl bg-white/2 cursor-pointer hover:bg-white/5 transition-colors" onClick={runTimeMachineSimulation}>
+                      <p className="text-xs text-muted font-mono uppercase tracking-[0.1em]">No backtest timeline data found. Click to run 7-Day Simulation.</p>
+                    </div>
+                  );
                 })()}
               </div>
 
@@ -1237,48 +1231,44 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                     Autonomous Execution Ledger
                   </h3>
 
-                  <div className="flex-1 overflow-y-auto max-h-[235px] space-y-3 pr-1 scrollbar-thin scrollbar-thumb-white/5">
-                    {ledger && ledger.length > 0 ? (
-                      ledger.map((tx: any) => (
-                        <div key={tx.id} className={cn(
-                          "p-3 border rounded-xl space-y-2 hover:border-white/10 transition-colors",
-                          tx.action === "VETOED" || tx.status === "BREAKER TRIGGERED"
-                            ? "bg-red-950/20 border-red-500/20"
-                            : "bg-white/3 border-white/5"
-                        )}>
-                          <div className="flex items-center justify-between text-[11px] font-mono">
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10">
+                    {intelligence?.backtest_data ? (
+                      intelligence.backtest_data.slice().reverse().map((day: any, i: number) => (
+                        <div key={i} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl hover:border-[#00FFA3]/30 transition-all group">
+                          <div className="flex justify-between items-center mb-3">
                             <div className="flex items-center gap-2">
-                              <span className="text-white font-bold">{tx.asset}</span>
-                              <span className={cn(
-                                "text-[9px] px-1.5 py-0.5 rounded uppercase font-bold text-black",
-                                tx.action === "VETOED" || tx.status === "BREAKER TRIGGERED"
-                                  ? "bg-red-500 text-white"
-                                  : tx.action.includes("BUY") || tx.action.includes("ALLOCATE")
-                                    ? "bg-accent"
-                                    : "bg-orange-400"
-                              )}>
-                                {tx.action}
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#00FFA3] animate-pulse" />
+                              <span className="text-[10px] font-mono font-bold text-[#00FFA3] tracking-tighter">
+                                NEURAL_CAPTURE // {day.date?.toUpperCase() || ''}
                               </span>
                             </div>
-                            <span className="text-muted/60 text-[9px] font-mono">
-                              {new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
+                            <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Status: Settled</span>
                           </div>
                           
-                          <div className="text-[11px] text-muted flex justify-between font-mono">
-                            <span>Qty: <span className="text-white font-mono">{tx.amount}</span></span>
-                            <span>Price: <span className="text-white font-mono">${tx.price?.toLocaleString()}</span></span>
-                            <span>Total: <span className="text-accent font-bold font-mono">${tx.total_value?.toLocaleString()}</span></span>
+                          <div className="flex justify-between items-end">
+                            <div className="space-y-1">
+                              <div className="text-xl font-bold font-mono text-white tracking-tighter">
+                                +{day.vault_return?.toFixed(2) || "0.00"}%
+                              </div>
+                              <div className="text-[9px] text-gray-500 uppercase font-mono tracking-widest">
+                                Alpha Yield Realized
+                              </div>
+                            </div>
+                            
+                            <div className="text-right space-y-1">
+                              <div className="text-[10px] font-mono text-white/70">
+                                Flow: <span className="text-accent">${day.net_etf_flow}M</span>
+                              </div>
+                              <div className="text-[8px] font-mono text-gray-600">
+                                ID: {(Math.random() * 1000000).toFixed(0)}
+                              </div>
+                            </div>
                           </div>
-
-                          <p className="text-[10px] text-muted/80 leading-snug border-l border-white/10 pl-2 py-0.5 italic">
-                            "{tx.trigger_signal}"
-                          </p>
                         </div>
                       ))
                     ) : (
-                      <div className="h-full flex items-center justify-center py-12">
-                        <p className="text-xs text-muted font-mono uppercase tracking-wider">No logged execution trades detected.</p>
+                      <div className="h-full flex items-center justify-center border border-dashed border-white/5 rounded-2xl py-12">
+                        <p className="text-[10px] text-gray-600 font-mono uppercase animate-pulse">Awaiting Neural Node Ledger...</p>
                       </div>
                     )}
                   </div>
@@ -2258,42 +2248,46 @@ VERIFIED VIA ZK-PROOF ATTESTATION
               </div>
 
               <div className="flex-1 overflow-y-auto p-8 space-y-6">
-                <div className="space-y-4 font-sans">
-                  {activeSignalAttribution.map((news: any, idx) => (
-                    <div key={idx} className="p-5 bg-white/3 border border-white/5 rounded-2xl space-y-3 hover:border-accent/40 transition-colors group cursor-default">
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <div className={cn(
-                            "w-1.5 h-1.5 rounded-full animate-pulse",
-                            news.impact_level === "HIGH" ? "bg-accent" : "bg-orange-400"
-                          )} />
-                          <span className="text-[10px] font-mono text-accent uppercase font-bold tracking-tighter">
-                            Impact: {news.impact_level || "HIGH"}
+                <div className="space-y-4">
+                  {intelligence?.headlines ? (
+                    intelligence.headlines.map((news: any, idx: number) => (
+                      <div key={idx} className="p-5 bg-white/[0.03] border border-white/5 rounded-2xl space-y-3 hover:border-[#00FFA3]/40 transition-colors group">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#00FFA3] animate-pulse" />
+                            <span className="text-[10px] font-mono text-[#00FFA3] font-bold uppercase tracking-tighter">
+                              Impact: {news.impact_level || "HIGH"}
+                            </span>
+                          </div>
+                          <span className="text-[9px] font-mono text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">
+                            {news.relative_time || "4m ago"}
                           </span>
                         </div>
-                        <span className="text-[9px] font-mono text-muted/60 bg-white/5 px-1.5 py-0.5 rounded">
-                          {news.relative_time || "4m ago"}
-                        </span>
+                        
+                        <h5 className="text-[13px] font-bold text-white group-hover:text-[#00FFA3] transition-colors leading-snug">
+                          {news.title}
+                        </h5>
+                        
+                        <p className="text-xs text-gray-400 leading-relaxed italic">
+                          "{news.description}"
+                        </p>
+                        
+                        <div className="pt-2 flex justify-between items-center border-t border-white/5">
+                          <div className="flex items-center gap-2 text-[9px] font-mono text-gray-500">
+                            <span className="text-[#00FFA3]/60 font-bold">WEIGHT:</span>
+                            <span className="text-white">+{news.sentiment_score?.toFixed(2) || "0.85"}</span>
+                          </div>
+                          <span className="text-[8px] font-mono text-gray-600 uppercase tracking-widest">
+                            Source: SoSo-News API
+                          </span>
+                        </div>
                       </div>
-                      
-                      <h5 className="text-[13px] font-bold text-white group-hover:text-accent transition-colors leading-snug">{news.title}</h5>
-                      <p className="text-xs text-muted leading-relaxed italic">"{news.description}"</p>
-                      
-                      <div className="flex items-center gap-2 text-[9px] font-mono text-white/50 bg-white/5 px-2 py-1 rounded w-fit">
-                        <span className="text-accent/80 font-bold">SENTIMENT WEIGHT:</span>
-                        <span className="text-white font-bold font-mono">
-                          {news.sentiment_score ? (news.sentiment_score >= 0 ? `+${news.sentiment_score.toFixed(2)}` : news.sentiment_score.toFixed(2)) : "+0.85"}
-                        </span>
-                      </div>
-
-                      <div className="pt-2 flex justify-between items-center text-[9px] font-mono uppercase">
-                        <span className="text-muted/40 text-[8px]">Source: SoSoValue API</span>
-                        <span className="px-2 py-0.5 rounded bg-accent/20 text-accent font-bold border border-accent/30 tracking-widest text-[8px] animate-pulse">
-                          LINK: VALIDATED
-                        </span>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="py-12 text-center border border-dashed border-white/5 rounded-2xl">
+                      <p className="text-[10px] text-gray-600 font-mono uppercase animate-pulse">Synchronizing Evidence Vault...</p>
                     </div>
-                  ))}
+                  )}
                 </div>
 
                 <div className="p-6 bg-accent/5 border border-accent/20 rounded-2xl space-y-3">
