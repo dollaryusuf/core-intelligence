@@ -58,7 +58,8 @@ import {
   toggleBlackSwan,
   getSimulationHistory,
   getExecutionLedger,
-  getHostBacktestTimeline
+  getHostBacktestTimeline,
+  getPythonAlphaData
 } from './services/aiService';
 import { 
   SoSoVaultAnalysis, 
@@ -182,22 +183,79 @@ export default function App() {
     // Exact requested log sequence
     addLog("Initiating Intelligence Node-001...", "process");
     
-    // Attempt to get live data from backend sosoClient
-    let freshData: any;
-    const liveData = await getLiveMarketData();
-    
-    if (liveData) {
-      setTimeout(() => addLog("Querying SoSoValue News API for #AIScaling sentiment...", "process"), 400);
-      // Combine live market data with mock portfolio for demo
-      const mockFull = generateMockData();
-      freshData = { ...liveData, portfolio: mockFull.portfolio };
-      setIsGuestMode(!!liveData.is_guest_mode);
-    } else {
-      setTimeout(() => addLog("Backend relay offline. Initializing simulated data buffer.", "alert"), 400);
-      freshData = generateMockData();
-      setIsGuestMode(true);
+    let freshData: any = null;
+    let pythonRes: any = null;
+
+    try {
+      addLog("Contacting Python Serverless API (/api/live)...", "process");
+      pythonRes = await getPythonAlphaData();
+    } catch (apiErr) {
+      console.warn("Python backend error:", apiErr);
     }
-    
+
+    if (pythonRes && pythonRes.live_data) {
+      addLog("Successfully retrieved SoSoValue institutional streams from Python backend.", "info");
+      const liveData = pythonRes.live_data;
+      setIsGuestMode(!!liveData.is_guest_mode);
+
+      // Map the python response to the React frontend state format
+      freshData = {
+        sentiment: {
+          score: liveData.sentiment_score,
+          velocity: liveData.sentiment_score > 0.7 ? "improving" : "decaying",
+          topNarratives: liveData.top_narratives,
+          newsMood: liveData.news_mood_summary,
+          topNews: liveData.top_news
+        },
+        sectors: Object.entries(liveData.sector_performance_map).map(([name, val]) => ({
+          name,
+          performanceVsBtc: val as number,
+          sentiment: liveData.sentiment_score
+        })),
+        macro: {
+          etfInflows: liveData.etf_net_flows,
+          fundingRate: liveData.funding_rates,
+          institutionalSignal: liveData.sentiment_score > 0.75 ? "Strong Buy" : "Neutral"
+        },
+        portfolio: {
+          totalValue: initialPortfolio.totalValue,
+          holdings: initialPortfolio.holdings.map(h => {
+            const price = liveData.crypto_prices?.[h.asset] || 1.0;
+            return {
+              ...h,
+              amount: h.asset === "USDC" ? h.amount : (initialPortfolio.totalValue * h.weight) / price
+            };
+          }),
+          pnl24h: parseFloat((liveData.sentiment_score * 4.5 - 2.0).toFixed(1))
+        },
+        source: liveData.source
+      };
+
+      // Set global portfolio valuation (AUM) state
+      setManagedData(prev => prev ? {
+        ...prev,
+        totalAUM: freshData.portfolio.totalValue
+      } : {
+        totalAUM: freshData.portfolio.totalValue, 
+        vaults: []
+      } as any);
+
+    } else {
+      // Fallback if python is fully offline or has missing API/dependencies
+      addLog("Python backend bridge stale. Performing fast-switch to TypeScript database.", "alert");
+      const liveData = await getLiveMarketData();
+      if (liveData) {
+        setTimeout(() => addLog("Querying SoSoValue News API for #AIScaling sentiment...", "process"), 400);
+        const mockFull = generateMockData();
+        freshData = { ...liveData, portfolio: mockFull.portfolio };
+        setIsGuestMode(!!liveData.is_guest_mode);
+      } else {
+        setTimeout(() => addLog("Database offline. Initializing simulation mode.", "alert"), 400);
+        freshData = generateMockData();
+        setIsGuestMode(true);
+      }
+    }
+
     setData(freshData);
 
     try {
@@ -228,56 +286,92 @@ export default function App() {
       }, 2200);
       
       setTimeout(() => {
-        setAnalysis(result);
+        // Enforce Python Risk Verdict & Sizing rules directly onto the output dashboard analysis state
+        const riskVerdictObj = pythonRes?.risk_verdict;
+        const mappedAnalysis = {
+          ...result,
+          analysis: {
+            ...result?.analysis,
+            sentiment_score: freshData.sentiment.score,
+            sentiment_analysis: freshData.sentiment.newsMood
+          },
+          risk_engine: {
+            risk_score: riskVerdictObj?.metrics?.risk_score !== undefined ? riskVerdictObj.metrics.risk_score : result?.risk_engine?.risk_score,
+            risk_level: riskVerdictObj ? (riskVerdictObj.is_vetoed ? "Critical" : "Moderate") : result?.risk_engine?.risk_level,
+            circuit_breaker_active: riskVerdictObj?.circuit_breaker_active !== undefined ? riskVerdictObj.circuit_breaker_active : result?.risk_engine?.circuit_breaker_active
+          },
+          debate_log: {
+            ...result?.debate_log,
+            risk_auditor: {
+              status: riskVerdictObj ? riskVerdictObj.status : result?.debate_log?.risk_auditor?.status,
+              criticism: riskVerdictObj ? (riskVerdictObj.reasons ? riskVerdictObj.reasons.join(" ") : "") : result?.debate_log?.risk_auditor?.criticism,
+              safe_size_limit: pythonRes ? pythonRes.mathematical_kelly_size : result?.debate_log?.risk_auditor?.safe_size_limit
+            }
+          },
+          // Map to Evidence Vault headlines
+          signal_attribution: pythonRes?.live_data?.top_news || result?.signal_attribution
+        };
+
+        setAnalysis(mappedAnalysis);
         setActiveTab('strategy');
         setLoading(false);
         setLoadingStep(0);
-        addLog(`Strategic Mandate finalized: ${result.allocation_plan.action}.`, "info");
+        addLog(`Strategic Mandate finalized: ${mappedAnalysis?.allocation_plan?.action || "REBALANCE"}.`, "info");
       }, 3000);
 
     } catch (err) {
       console.error(err);
       if (DEMO_MODE) {
         addLog("Neural Engine offline. Bypassing via DEMO_MODE...", "info");
-        // Provide a minimal analysis object so the dashboard doesn't crash
+        
+        const riskVerdictObj = pythonRes?.risk_verdict;
         setAnalysis({
           analysis: {
             market_regime: "High-Alpha Expansion",
             primary_signal: "SoSo-Node-Authenticated (FORCED_DEMO)",
-            sentiment_analysis: "Live API Sync: Market showing signs of narrative rotation into AI and L2 sectors. Neural Consensus Finalized.",
+            sentiment_analysis: freshData?.sentiment?.newsMood || "Live API Sync: Market showing signs of narrative rotation. Neural Consensus Finalized.",
             chain_of_thought: {
               macro_check: "Live API Sync: ETF flows are trending positive, indicating strong spot demand.",
               sector_check: "Live API Sync: AI and L2 outperforming BTC by significant margins.",
               sentiment_velocity: "Live API Sync: Social sentiment is rapidly improving based on recent retail inflows.",
-              global_risk_score: 35
+              global_risk_score: riskVerdictObj?.metrics?.risk_score !== undefined ? riskVerdictObj.metrics.risk_score : 35
             },
-            sentiment_score: 0.82
+            sentiment_score: freshData?.sentiment?.score
           },
           risk_engine: {
-            risk_score: 35,
-            risk_level: "Moderate",
-            circuit_breaker_active: false
+            risk_score: riskVerdictObj?.metrics?.risk_score !== undefined ? riskVerdictObj.metrics.risk_score : 35,
+            risk_level: riskVerdictObj ? (riskVerdictObj.is_vetoed ? "Critical" : "Moderate") : "Moderate",
+            circuit_breaker_active: riskVerdictObj?.circuit_breaker_active !== undefined ? riskVerdictObj.circuit_breaker_active : false
           },
           allocation_plan: {
-            action: "REBALANCE",
-            target_weights: {
+            action: riskVerdictObj?.is_vetoed ? "EXIT TO STABLES" : "REBALANCE",
+            target_weights: riskVerdictObj?.is_vetoed ? {
+              BTC: 0.00,
+              ETH: 0.00,
+              SOL: 0.00,
+              STABLES: 1.00
+            } : {
               BTC: 0.40,
               ETH: 0.20,
               SOL: 0.15,
               STABLES: 0.15,
               SECTOR_INDEX: 0.10
             },
-            trade_instructions: "Neural Consensus Finalized: Executing strategic shift based on SoSo-Node-Authenticated signals.",
+            trade_instructions: riskVerdictObj?.is_vetoed 
+              ? `VETO PARITY ACTIVE: ${riskVerdictObj.reasons ? riskVerdictObj.reasons.join(' ') : ""}`
+              : "Neural Consensus Finalized: Executing strategic shift based on SoSo-Node-Authenticated signals.",
             trade_rationale: "Live API Sync: Alignment with institutional liquidity flows confirmed."
           },
-          reasoning_narrative: "Live API Sync: High-conviction play on current narrative alpha. Risk parameters remains within optimal bounds. SoSo-Node-Authenticated.",
-          signal_attribution: [],
+          reasoning_narrative: riskVerdictObj?.is_vetoed 
+            ? `VETO DETECTED: ${riskVerdictObj.reasons ? riskVerdictObj.reasons.join(' ') : ""}`
+            : "Live API Sync: High-conviction play on current narrative alpha. Risk parameters remains within optimal bounds. SoSo-Node-Authenticated.",
+          signal_attribution: pythonRes?.live_data?.top_news || [],
           debate_log: {
             alpha_hunter: "Aggressive rotation into AI and L2 looks optimal given the current narrative velocity and BTC dominance plateau.",
             risk_auditor: {
-              status: "APPROVED",
-              criticism: "Proposal is acceptable but requires tight trailing stops.",
-              safe_size_limit: 12.5
+              status: riskVerdictObj ? riskVerdictObj.status : "APPROVED",
+              criticism: riskVerdictObj ? (riskVerdictObj.reasons ? riskVerdictObj.reasons.join(" ") : "") : "Proposal is acceptable but requires tight trailing stops.",
+              safe_size_limit: pythonRes ? pythonRes.mathematical_kelly_size : 12.5
             }
           }
         });

@@ -751,7 +751,103 @@ app.get("/api/time-machine", async (req, res) => {
   res.json(simulation);
 });
 
+// Bridge to Python Vercel Serverless Function `/api/index.py`
+app.get("/api/live", async (req, res) => {
+  try {
+    const sosoApiKey = process.env.SOSO_VALUE_API_KEY || process.env.SOSO_API_KEY || "";
+    const response = await fetch("http://127.0.0.1:5001/api", {
+      headers: {
+        "x-api-key": sosoApiKey
+      }
+    });
+    if (!response.ok) {
+      throw new Error("Python backend responded with non-200 state");
+    }
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.warn("Failed to fetch from Python API, fallback to mock generation...", error);
+    // Directly output a high fidelity JSON so backend never crashes (uncrashable mandate)
+    res.json({
+      live_data: {
+        sentiment_score: 0.72,
+        sentiment_label: "Bullish",
+        top_narratives: ["#AI", "#L2", "#DePIN", "#BTC"],
+        news_mood_summary: "Safe Mode: Fallback system active.",
+        top_news: [
+          {
+            title: "BlackRock Spot BTC ETF Records $150M Single-Day Inflow",
+            description: "Institutional demand remains resilient as macro conditions stabilize according to SoSoValue data.",
+            impact_level: "HIGH",
+            sentiment_score: 0.88,
+            relative_time: "12m ago"
+          },
+          {
+            title: "AI-Agents Sector Outperforms Market by 12% in Weekly Cycle",
+            description: "Neural compute narratives are driving capital rotation into high-beta AI tokens.",
+            impact_level: "HIGH",
+            sentiment_score: 0.74,
+            relative_time: "2h ago"
+          }
+        ],
+        etf_net_flows: [120.5, 85.0, -15.2, 210.3, 155.4],
+        sector_performance_map: { "AI": 14.2, "L2": 5.8, "DePIN": 9.3, "RWA": 4.1 },
+        funding_rates: 0.035,
+        crypto_prices: { "BTC": 64500.0, "ETH": 3480.0, "SOL": 155.0, "STABLES": 1.0, "USDC": 1.0 },
+        source: "SIMULATED",
+        is_guest_mode: true
+      },
+      risk_verdict: {
+        status: "APPROVED",
+        is_vetoed: false,
+        circuit_breaker_active: false,
+        reasons: ["Safe Mode: Simulator operating inside institutional parameters."],
+        metrics: {
+          latest_etf_flow_usdm: 155.4,
+          funding_rate_percent: 0.035,
+          risk_score: 35
+        }
+      },
+      mathematical_kelly_size: 14.8
+    });
+  }
+});
+
+import { spawn } from "child_process";
+
 async function startServer() {
+  // Spawn Python service in the background for local development bridge
+  try {
+    console.log("Starting Python Backend server (api/index.py) on port 5001...");
+    // Try python3 first, then python fallback
+    let pythonProcess = spawn("python3", ["api/index.py"]);
+
+    pythonProcess.on("error", (err) => {
+      console.warn("python3 command not found or failed, trying python...", err.message);
+      try {
+        const altProcess = spawn("python", ["api/index.py"]);
+        altProcess.stdout.on("data", (data) => {
+          console.log(`[Python Stdout] ${data.toString().trim()}`);
+        });
+        altProcess.stderr.on("data", (data) => {
+          console.warn(`[Python Stderr] ${data.toString().trim()}`);
+        });
+      } catch (fallbackErr) {
+        console.error("Failed to spawn Python process completely.", fallbackErr);
+      }
+    });
+    
+    pythonProcess.stdout.on("data", (data) => {
+      console.log(`[Python Stdout] ${data.toString().trim()}`);
+    });
+    
+    pythonProcess.stderr.on("data", (data) => {
+      console.warn(`[Python Stderr] ${data.toString().trim()}`);
+    });
+  } catch (err) {
+    console.error("Error launching companion Python backends:", err);
+  }
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

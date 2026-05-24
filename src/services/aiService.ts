@@ -69,6 +69,17 @@ export const generateMockData = () => {
   return { sentiment, sectors, macro, portfolio, source: 'SIMULATED' as const };
 };
 
+export const getPythonAlphaData = async (): Promise<any> => {
+  try {
+    const response = await fetch("/api/live");
+    if (!response.ok) throw new Error("Python backend offline");
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to fetch Python Alpha Data:", error);
+    return null;
+  }
+};
+
 export const getLiveMarketData = async (): Promise<any> => {
   try {
     const response = await fetch("/api/market-data");
