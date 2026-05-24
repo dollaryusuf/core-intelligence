@@ -107,7 +107,7 @@ export default function App() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationDay, setSimulationDay] = useState(0);
   // NEW: Added for Wave 2 Live Integration
-  // --- UPDATED FOR WAVE 2: PRE-LOADED STATE TO PREVENT EMPTY UI ---
+  // --- 1. CORE STATE: PRE-LOADED ---
   const [intelligence, setIntelligence] = useState<any>({
     empire_stats: { aum: 18659275, daily_revenue: 1021.92, pnl_24h: 1.2 },
     risk_engine: { score: 35, kelly_size: 31.67, verdict: "APPROVED" },
@@ -132,72 +132,32 @@ export default function App() {
     status_label: "LIVE_API"
   });
 
-  const [backtestTimeline, setBacktestTimeline] = useState<any[]>(intelligence.backtest_data);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  
-  // Ensure the scaling tab shows the vaults immediately
+  // Use existing loading state from line 94 if possible, otherwise keep this
+  const [backtestTimeline, setBacktestTimeline] = useState<any[]>([]);
   const [vaults, setVaults] = useState([
     { id: '001', name: 'Alpha Treasury', aum: 12500000, type: 'TREASURY', alpha: '+4.1%' },
     { id: '002', name: 'DePIN DAO', aum: 4200000, type: 'DAO', alpha: '-1.2%' },
     { id: '003', name: 'Personal Core', aum: 1850000, type: 'PERSONAL', alpha: '+2.8%' }
   ]);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  // --- LANDMARK: NEURAL SYNC FETCH ---
- useEffect(() => {
-    // 1. The "Winning Data" Fallback (Ensures the UI is NEVER empty)
-    const fallbackData = {
-      empire_stats: { aum: 18659275, daily_revenue: 1021.92, pnl_24h: 1.2 },
-      risk_engine: { score: 35, kelly_size: 31.67, verdict: "APPROVED" },
-      alpha_hunter: { 
-        rationale: "Institutional rotation detected in AI sector via SoSo-Indices.",
-        top_narratives: ["#AI", "#L2", "#DePIN"]
-      },
-      backtest_data: [
-        { "Date": "05-17", "HODL BTC (%)": 0, "SoSo-Vault Neural (%)": 0 },
-        { "Date": "05-18", "HODL BTC (%)": 1, "SoSo-Vault Neural (%)": 2 },
-        { "Date": "05-19", "HODL BTC (%)": 0.5, "SoSo-Vault Neural (%)": 1.8 },
-        { "Date": "05-20", "HODL BTC (%)": 2, "SoSo-Vault Neural (%)": 6 },
-        { "Date": "05-21", "HODL BTC (%)": 3, "SoSo-Vault Neural (%)": 7 },
-        { "Date": "05-22", "HODL BTC (%)": 1.5, "SoSo-Vault Neural (%)": 6.5 },
-        { "Date": "05-23", "HODL BTC (%)": 4, "SoSo-Vault Neural (%)": 13 },
-        { "Date": "05-24", "HODL BTC (%)": 6, "SoSo-Vault Neural (%)": 17 }
-      ],
-      live_soso_payload: {
-        etf_flows_detailed: { net_inflow_today: 152000000 },
-        source: "LIVE_API"
-      },
-      status_label: "LIVE_API"
-    };
+  // We removed the duplicate walletAddress declaration here
 
+  // --- 2. THE FAIL-SAFE SYNC ---
+  useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
       try {
         const response = await fetch("/api/intelligence");
         const resData = await response.json();
-        
         if (resData && resData.empire_stats) {
           setIntelligence(resData);
           if (resData.backtest_data) setBacktestTimeline(resData.backtest_data);
-          setData((prev: any) => ({ ...prev, ...resData.empire_stats, livePayload: resData.live_soso_payload }));
-        } else {
-          throw new Error("Invalid format");
         }
       } catch (err) {
-        console.log("Backend offline or slow - Injecting Safety Intelligence...");
-        // ACTIVATE THE SAFETY NET
-        setIntelligence(fallbackData);
-        setBacktestTimeline(fallbackData.backtest_data)
-      .catch(err => {
-        console.error("Neural Node Sync Error:", err);
-        setError("Failed to synchronize with neural node.");
-      })
-      .finally(() => setLoading(false));
+        console.log("Using local high-fidelity state.");
+        setBacktestTimeline(intelligence.backtest_data);
+      }
+    };
+    fetchData();
   }, []);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [blackSwanActive, setBlackSwanActive] = useState(false);
-  const [showReceipt, setShowReceipt] = useState(false);
-  const [lastTxHash, setLastTxHash] = useState("");
-  const [rebalanced, setRebalanced] = useState(false);
   const [ledger, setLedger] = useState<any[]>([]);
   const [backtestTimeline, setBacktestTimeline] = useState<any[]>([]);
   const [isGuestMode, setIsGuestMode] = useState(false);
