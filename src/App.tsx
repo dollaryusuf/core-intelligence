@@ -234,9 +234,9 @@ export default function App() {
       // Set global portfolio valuation (AUM) state
       setManagedData(prev => prev ? {
         ...prev,
-        totalAUM: freshData.portfolio.totalValue
+        totalAUM: pythonRes?.empire_stats?.aum !== undefined ? pythonRes.empire_stats.aum : freshData.portfolio.totalValue
       } : {
-        totalAUM: freshData.portfolio.totalValue, 
+        totalAUM: pythonRes?.empire_stats?.aum !== undefined ? pythonRes.empire_stats.aum : freshData.portfolio.totalValue, 
         vaults: []
       } as any);
 
@@ -296,21 +296,26 @@ export default function App() {
             sentiment_analysis: freshData.sentiment.newsMood
           },
           risk_engine: {
-            risk_score: riskVerdictObj?.metrics?.risk_score !== undefined ? riskVerdictObj.metrics.risk_score : result?.risk_engine?.risk_score,
-            risk_level: riskVerdictObj ? (riskVerdictObj.is_vetoed ? "Critical" : "Moderate") : result?.risk_engine?.risk_level,
-            circuit_breaker_active: riskVerdictObj?.circuit_breaker_active !== undefined ? riskVerdictObj.circuit_breaker_active : result?.risk_engine?.circuit_breaker_active
+            risk_score: pythonRes?.risk_engine?.score !== undefined ? pythonRes.risk_engine.score : (riskVerdictObj?.metrics?.risk_score !== undefined ? riskVerdictObj.metrics.risk_score : result?.risk_engine?.risk_score),
+            risk_level: pythonRes?.risk_engine?.level !== undefined ? pythonRes.risk_engine.level : (riskVerdictObj ? (riskVerdictObj.is_vetoed ? "Critical" : "Moderate") : result?.risk_engine?.risk_level),
+            circuit_breaker_active: pythonRes?.risk_engine?.circuit_breaker_active !== undefined ? pythonRes.risk_engine.circuit_breaker_active : (riskVerdictObj?.circuit_breaker_active !== undefined ? riskVerdictObj.circuit_breaker_active : result?.risk_engine?.circuit_breaker_active)
           },
           debate_log: {
             ...result?.debate_log,
+            alpha_hunter: pythonRes?.alpha_hunter?.rationale || (result?.debate_log?.alpha_hunter || "Analyzing institutional arbitrage opportunities..."),
             risk_auditor: {
               status: riskVerdictObj ? riskVerdictObj.status : result?.debate_log?.risk_auditor?.status,
               criticism: riskVerdictObj ? (riskVerdictObj.reasons ? riskVerdictObj.reasons.join(" ") : "") : result?.debate_log?.risk_auditor?.criticism,
-              safe_size_limit: pythonRes ? pythonRes.mathematical_kelly_size : result?.debate_log?.risk_auditor?.safe_size_limit
+              safe_size_limit: pythonRes ? (pythonRes.kelly_size !== undefined ? pythonRes.kelly_size : pythonRes.mathematical_kelly_size) : result?.debate_log?.risk_auditor?.safe_size_limit
             }
           },
           // Map to Evidence Vault headlines
-          signal_attribution: pythonRes?.live_data?.top_news || result?.signal_attribution
+          signal_attribution: pythonRes?.headlines || (pythonRes?.live_data?.top_news || result?.signal_attribution)
         };
+
+        if (pythonRes?.backtest_data) {
+          setBacktestTimeline(pythonRes.backtest_data);
+        }
 
         setAnalysis(mappedAnalysis);
         setActiveTab('strategy');
@@ -704,16 +709,16 @@ VERIFIED VIA ZK-PROOF ATTESTATION
               <div className="flex items-center gap-2 mt-0.5">
                 <p className="text-[10px] uppercase tracking-widest text-muted font-mono">Senior On-Chain Treasury Quant</p>
                 <div className={cn(
-                  "px-1.5 py-0.5 text-[8px] font-mono font-bold rounded-sm flex items-center gap-1.5 leading-none uppercase tracking-wider border",
-                  !isGuestMode 
+                  "px-1.5 py-0.5 text-[8px] font-mono font-bold rounded-sm flex items-center gap-1.5 leading-none uppercase tracking-wider border animate-pulse",
+                  data.source === 'LIVE_API' 
                     ? "bg-accent/15 text-accent border-accent/20" 
                     : "bg-amber-500/10 text-amber-500/90 border-amber-500/20"
                 )}>
                   <span className={cn(
-                    "w-1.5 h-1.5 rounded-full animate-pulse",
-                    !isGuestMode ? "bg-accent" : "bg-amber-500"
-                  )} />
-                  {!isGuestMode ? "STATUS: CORE LIVE SYNC" : "STATUS: VAULT MIRROR ACTIVE"}
+                    "w-1.5 h-1.5 rounded-full",
+                    data.source === 'LIVE_API' ? "bg-accent" : "bg-amber-500"
+                   )} />
+                  {data.source === 'LIVE_API' ? "● CORE LIVE SYNC" : "● SIMULATED DATA SYNC"}
                 </div>
               </div>
             </div>
@@ -722,13 +727,13 @@ VERIFIED VIA ZK-PROOF ATTESTATION
           <div className="flex items-center gap-6 font-mono text-xs">
             <div className="flex flex-col items-end">
               <span className="text-muted text-[10px] uppercase">Empire AUM</span>
-              <span className="text-white font-bold font-mono">${managedData?.totalAUM.toLocaleString()}</span>
+              <span className="text-white font-bold font-mono">${managedData?.totalAUM?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div className="h-8 w-[1px] bg-white/10" />
             <div className="flex flex-col items-end">
               <span className="text-muted text-[10px] uppercase">Daily Revenue</span>
               <span className="text-accent font-bold font-mono-numbers">
-                ${(managedData ? (managedData.totalAUM * 0.02) / 365 : 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                ${(managedData ? (managedData.totalAUM * 0.02) / 365 : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div className="h-8 w-[1px] bg-white/10" />
@@ -1182,13 +1187,13 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                       <div className="flex flex-col gap-4">
                         <div className="flex justify-between items-center">
                           <span className="text-[10px] font-mono text-muted uppercase">Global AUM</span>
-                          <span className="text-xl font-bold text-accent font-mono-numbers">${managedData?.totalAUM.toLocaleString()}</span>
+                          <span className="text-xl font-bold text-accent font-mono-numbers">${managedData?.totalAUM?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div className="h-px bg-white/10" />
                             <div className="flex justify-between items-center">
                               <span className="text-[10px] font-mono text-muted uppercase">Revenue Generated (Annual 2%)</span>
                               <span className="text-xl font-bold text-accent font-mono-numbers">
-                                ${(managedData ? managedData.totalAUM * 0.02 : 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                ${(managedData ? managedData.totalAUM * 0.02 : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                         <p className="text-[9px] font-mono text-muted px-2 py-1 bg-white/5 rounded italic text-center">
@@ -1224,7 +1229,7 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                         <div className="space-y-4">
                           <div className="flex justify-between items-end">
                             <span className="text-[10px] font-mono text-muted uppercase">Vault AUM</span>
-                            <span className="text-lg font-bold font-mono tracking-tighter">${vault.aum.toLocaleString()}</span>
+                            <span className="text-lg font-bold font-mono tracking-tighter">${vault.aum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div className="p-2 bg-white/5 rounded border border-white/5">

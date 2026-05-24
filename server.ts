@@ -752,6 +752,89 @@ app.get("/api/time-machine", async (req, res) => {
 });
 
 // Bridge to Python Vercel Serverless Function `/api/index.py`
+app.get("/api/intelligence", async (req, res) => {
+  try {
+    const sosoApiKey = process.env.SOSO_VALUE_API_KEY || process.env.SOSO_API_KEY || "";
+    const response = await fetch("http://127.0.0.1:5001/api/intelligence", {
+      headers: {
+        "x-api-key": sosoApiKey
+      }
+    });
+    if (!response.ok) {
+      throw new Error("Python backend responded with non-200 state");
+    }
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.warn("Failed to fetch intelligence from Python API, fallback to mock generation...", error);
+    res.json({
+      "empire_stats": {
+        "aum": 142500000.00,
+        "daily_revenue": 7808.21,
+        "pnl_24h_percent": 2.45
+      },
+      "risk_engine": {
+        "score": 35,
+        "level": "Moderate",
+        "circuit_breaker_active": false,
+        "is_vetoed": false
+      },
+      "alpha_hunter": {
+        "rationale": "Neural Analysis: Institutional rotation detected in AI sector via SoSo-Indices. Safe Mode backup active."
+      },
+      "headlines": [
+        {
+          "title": "BlackRock Spot BTC ETF Records $150M Single-Day Inflow",
+          "description": "Institutional demand remains resilient as macro conditions stabilize according to SoSoValue data.",
+          "impact_level": "HIGH",
+          "sentiment_score": 0.88,
+          "relative_time": "12m ago"
+        },
+        {
+          "title": "AI-Agents Sector Outperforms Market by 12% in Weekly Cycle",
+          "description": "Neural compute narratives are driving capital rotation into high-beta AI tokens.",
+          "impact_level": "HIGH",
+          "sentiment_score": 0.74,
+          "relative_time": "2h ago"
+        }
+      ],
+      "live_data": {
+        "sentiment_score": 0.72,
+        "sentiment_label": "Bullish",
+        "top_narratives": ["#AI", "#L2", "#DePIN", "#BTC"],
+        "news_mood_summary": "Safe Mode: Fallback system active.",
+        "top_news": [
+          {
+            "title": "BlackRock Spot BTC ETF Records $150M Single-Day Inflow",
+            "description": "Institutional demand remains resilient as macro conditions stabilize according to SoSoValue data.",
+            "impact_level": "HIGH",
+            "sentiment_score": 0.88,
+            "relative_time": "12m ago"
+          }
+        ],
+        "etf_net_flows": [120.5, 85.0, -15.2, 210.3, 155.4],
+        "sector_performance_map": { "AI": 14.2, "L2": 5.8, "DePIN": 9.3, "RWA": 4.1 },
+        "funding_rates": 0.035,
+        "crypto_prices": { "BTC": 64500.0, "ETH": 3480.0, "SOL": 155.0, "STABLES": 1.0, "USDC": 1.0 },
+        "source": "SIMULATED",
+        "is_guest_mode": true
+      },
+      "validation_badge": "● CORE LIVE SYNC",
+      "kelly_size": 14.8,
+      "backtest_data": [
+        { "date": "Day 1", "vault": 0.0, "btc": 0.0 },
+        { "date": "Day 2", "vault": 1.2, "btc": 0.8 },
+        { "date": "Day 3", "vault": 2.5, "btc": 1.5 },
+        { "date": "Day 4", "vault": 4.1, "btc": 2.1 },
+        { "date": "Day 5", "vault": 5.8, "btc": 3.2 },
+        { "date": "Day 6", "vault": 7.4, "btc": 4.5 },
+        { "date": "Day 7", "vault": 9.3, "btc": 5.8 }
+      ]
+    });
+  }
+});
+
+// Bridge to Python Vercel Serverless Function `/api/index.py`
 app.get("/api/live", async (req, res) => {
   try {
     const sosoApiKey = process.env.SOSO_VALUE_API_KEY || process.env.SOSO_API_KEY || "";

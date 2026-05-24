@@ -71,7 +71,7 @@ export const generateMockData = () => {
 
 export const getPythonAlphaData = async (): Promise<any> => {
   try {
-    const response = await fetch("/api/live");
+    const response = await fetch("/api/intelligence");
     if (!response.ok) throw new Error("Python backend offline");
     return await response.json();
   } catch (error) {
