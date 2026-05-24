@@ -722,14 +722,14 @@ with tab2:
         st.markdown("---")
         st.markdown("#### 📐 Mathematical Half-Kelly Position Sizing")
         st.markdown(
-            st.markdown(rf"""
+           st.markdown(rf"""
 **Execution Formula (Half-Kelly Criterion):**
 $$f^* = 0.5 \times \frac{{b \cdot p - q}}{{b}}$$
-""")
-            f"- Payoff Target Edge ($b$): **{risk_engine.b_risk_reward}**\n\n"
-            f"➡️ Calculated Neural Sizing Limit: <span style='font-family: \"JetBrains Mono\"; font-weight: bold; color: #00FFA3; font-size: 16px;'>{kelly_percentage}%</span>",
-            unsafe_allow_html=True
-        )
+
+- Payoff Target Edge ($b$): **{risk_engine.b_risk_reward}**
+
+ Calculated Neural Sizing Limit: <span style='font-family: "JetBrains Mono"; font-weight: bold; color: #00FFA3;'>{kelly_size}%</span>
+        """, unsafe_allow_html=True)
         
     with col_e2:
         st.markdown("### 🛡️ Hard-Coded Decoupled Auditor Rules")
