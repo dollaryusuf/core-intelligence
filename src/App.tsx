@@ -162,8 +162,6 @@ export default function App() {
   const [backtestTimeline, setBacktestTimeline] = useState<any[]>([]);
   const [isGuestMode, setIsGuestMode] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
-  const [walletConnecting, setWalletConnecting] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [showPayloadSidebar, setShowPayloadSidebar] = useState(false);
   const [intelligence, setIntelligence] = useState<any>(null);
   const hasBooted = useRef(false);
