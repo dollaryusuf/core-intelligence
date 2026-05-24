@@ -118,6 +118,7 @@ export default function App() {
   const [walletConnecting, setWalletConnecting] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [showPayloadSidebar, setShowPayloadSidebar] = useState(false);
+  const [intelligence, setIntelligence] = useState<any>(null);
   const hasBooted = useRef(false);
 
   const initialPortfolio: PortfolioState = {
@@ -164,8 +165,8 @@ export default function App() {
     setTimeout(() => {
       setWalletConnecting(false);
       setWalletConnected(true);
-      setWalletAddress("0x71C21A5A05d6e271D578db9D079A31cE8a5B4f2e");
-      addLog("[WALLET] Handshake completed. Account connected: 0x71C21A5A05d6e271D578db9D079A31cE8a5B4f2e", "info");
+      setWalletAddress("7vWp2bND746WdG7uREs9Xyz");
+      addLog("[WALLET] Handshake completed. Account connected: 7vWp2bND746WdG7uREs9Xyz", "info");
     }, 1200);
   };
 
@@ -196,6 +197,7 @@ export default function App() {
 
     if (pythonRes && pythonRes.live_data) {
       addLog("Successfully retrieved SoSoValue institutional streams from Python backend.", "info");
+      setIntelligence(pythonRes);
       const liveData = pythonRes.live_data;
       setIsGuestMode(!!liveData.is_guest_mode);
 
@@ -573,6 +575,16 @@ VERIFIED VIA ZK-PROOF ATTESTATION
     // Auto-run once on mount for demo
     runAnalysis();
 
+    // Fetch live intelligence on dashboard load
+    fetch("/api/intelligence")
+      .then(res => res.json())
+      .then(data => {
+        if (data) setIntelligence(data);
+      })
+      .catch(err => {
+        console.error("Dashboard error fetching core intelligence:", err);
+      });
+
     // Fetch fund manager data
     getFundManagerState().then(data => {
       if (data) setManagedData(data);
@@ -713,13 +725,13 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                   "px-1.5 py-0.5 text-[8px] font-mono font-bold rounded-sm flex items-center gap-1.5 leading-none uppercase tracking-wider border animate-pulse",
                   data.source === 'LIVE_API' 
                     ? "bg-accent/15 text-accent border-accent/20" 
-                    : "bg-amber-500/10 text-amber-500/90 border-amber-500/20"
+                    : "bg-blue-500/10 text-blue-400 border-blue-500/20"
                 )}>
                   <span className={cn(
                     "w-1.5 h-1.5 rounded-full",
-                    data.source === 'LIVE_API' ? "bg-accent" : "bg-amber-500"
+                    data.source === 'LIVE_API' ? "bg-accent" : "bg-blue-400"
                    )} />
-                  {data.source === 'LIVE_API' ? "● CORE LIVE SYNC" : "● SIMULATED DATA SYNC"}
+                  {data.source === 'LIVE_API' ? "● LIVE SYNC" : "● MIRROR"}
                 </div>
               </div>
             </div>
@@ -728,21 +740,23 @@ VERIFIED VIA ZK-PROOF ATTESTATION
           <div className="flex items-center gap-6 font-mono text-xs">
             <div className="flex flex-col items-end">
               <span className="text-muted text-[10px] uppercase">Empire AUM</span>
-              <span className="text-white font-bold font-mono">${managedData?.totalAUM?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span className="text-white font-bold font-mono">
+                ${(intelligence?.empire_stats?.aum !== undefined ? intelligence.empire_stats.aum : (managedData?.totalAUM || 142500000.00))?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
             </div>
             <div className="h-8 w-[1px] bg-white/10" />
             <div className="flex flex-col items-end">
               <span className="text-muted text-[10px] uppercase">Daily Revenue</span>
               <span className="text-accent font-bold font-mono-numbers">
-                ${(managedData ? (managedData.totalAUM * 0.02) / 365 : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${(intelligence?.empire_stats?.daily_revenue !== undefined ? intelligence.empire_stats.daily_revenue : (managedData ? (managedData.totalAUM * 0.02) / 365 : 7808.21))?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div className="h-8 w-[1px] bg-white/10" />
             <div className="flex flex-col items-end">
               <span className="text-muted text-[10px] uppercase font-mono">24h PnL</span>
-              <span className={cn("font-bold flex items-center gap-1 font-mono", data.portfolio.pnl24h >= 0 ? "text-accent" : "text-danger")}>
-                {data.portfolio.pnl24h >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                {data.portfolio.pnl24h}%
+              <span className={cn("font-bold flex items-center gap-1 font-mono", (intelligence?.empire_stats?.pnl_24h_percent !== undefined ? intelligence.empire_stats.pnl_24h_percent : data.portfolio.pnl24h) >= 0 ? "text-accent" : "text-danger")}>
+                {(intelligence?.empire_stats?.pnl_24h_percent !== undefined ? intelligence.empire_stats.pnl_24h_percent : data.portfolio.pnl24h) >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                {intelligence?.empire_stats?.pnl_24h_percent !== undefined ? intelligence.empire_stats.pnl_24h_percent : data.portfolio.pnl24h}%
               </span>
             </div>
             
@@ -818,7 +832,7 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                 title="Click to disconnect vault"
               >
                 <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" style={{ boxShadow: '0 0 8px #00FFA3' }} />
-                0x71C...4f2e
+                {walletAddress ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}` : "7vWp...9Xyz"}
               </button>
             )}
           </div>
@@ -1337,10 +1351,10 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                         </div>
                         <h4 className="text-[10px] font-mono text-muted uppercase tracking-widest mb-4">Risk Score</h4>
                         <div className={cn("text-5xl font-bold tracking-tight transition-colors font-mono", blackSwanActive ? "text-danger" : "text-white")}>
-                          {blackSwanActive ? "98" : analysis.risk_engine.risk_score}
+                          {blackSwanActive ? "98" : (intelligence?.risk_engine?.score !== undefined ? intelligence.risk_engine.score : (analysis?.risk_engine?.risk_score || "35"))}
                         </div>
                         <p className={cn("text-[11px] font-mono mt-2 uppercase tracking-tighter", blackSwanActive ? "text-danger font-bold" : "text-accent")}>
-                          {blackSwanActive ? "CRITICAL: LIQUIDITY CRUNCH" : analysis.risk_engine.risk_level}
+                          {blackSwanActive ? "CRITICAL: LIQUIDITY CRUNCH" : (intelligence?.risk_engine?.level !== undefined ? intelligence.risk_engine.level : (analysis?.risk_engine?.risk_level || "Moderate"))}
                         </p>
                       </div>
                       
