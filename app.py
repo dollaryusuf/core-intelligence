@@ -722,9 +722,10 @@ with tab2:
         st.markdown("---")
         st.markdown("#### 📐 Mathematical Half-Kelly Position Sizing")
         st.markdown(
-            f"**Execution Formula (Half-Kelly Criterion):**\n"
-            st.markdown(r"$$f^* = 0.5 \times \frac{b \cdot p - q}{b}$$")
-            f"- Win Probability Anchor ($p$): **{sentiment_val * 100:.1f}%**\n"
+            st.markdown(rf"""
+**Execution Formula (Half-Kelly Criterion):**
+$$f^* = 0.5 \times \frac{{b \cdot p - q}}{{b}}$$
+""")
             f"- Payoff Target Edge ($b$): **{risk_engine.b_risk_reward}**\n\n"
             f"➡️ Calculated Neural Sizing Limit: <span style='font-family: \"JetBrains Mono\"; font-weight: bold; color: #00FFA3; font-size: 16px;'>{kelly_percentage}%</span>",
             unsafe_allow_html=True
