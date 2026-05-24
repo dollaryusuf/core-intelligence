@@ -106,6 +106,41 @@ export default function App() {
   const [activeSignalAttribution, setActiveSignalAttribution] = useState<{ title: string; description: string }[] | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationDay, setSimulationDay] = useState(0);
+  // NEW: Added for Wave 2 Live Integration
+  const [intelligence, setIntelligence] = useState<any>(null);
+  const [backtestTimeline, setBacktestTimeline] = useState<any[]>([]);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  // --- LANDMARK: NEURAL SYNC FETCH ---
+  useEffect(() => {
+    // We use the existing 'setLoading' from line 94
+    setLoading(true);
+
+    fetch("/api/intelligence")
+      .then(res => res.json())
+      .then(result => {
+        if (result) {
+          // Fill the intelligence bucket
+          setIntelligence(result);
+          
+          // Fill the backtest bucket for the chart
+          if (result.backtest_data) {
+            setBacktestTimeline(result.backtest_data);
+          }
+          
+          // Update the template's 'data' state so the rest of the UI stays in sync
+          setData((prev: any) => ({
+            ...prev,
+            ...result.empire_stats,
+            livePayload: result.live_soso_payload
+          }));
+        }
+      })
+      .catch(err => {
+        console.error("Neural Node Sync Error:", err);
+        setError("Failed to synchronize with neural node.");
+      })
+      .finally(() => setLoading(false));
+  }, []);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [blackSwanActive, setBlackSwanActive] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
