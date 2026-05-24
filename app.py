@@ -721,8 +721,8 @@ with tab2:
         
         st.markdown("---")
         st.markdown("#### 📐 Mathematical Half-Kelly Position Sizing")
-    
-           st.markdown(rf"""
+  
+    st.markdown(rf"""
 **Execution Formula (Half-Kelly Criterion):**
 $$f^* = 0.5 \times \frac{{b \cdot p - q}}{{b}}$$
 
