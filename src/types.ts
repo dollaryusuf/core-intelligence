@@ -105,6 +105,7 @@ export interface ManagedVault {
   lastRebalance: string;
   alpha_vs_btc: number;
   total_return: number;
+  ownerAddress?: string;
 }
 
 export interface FundManagerState {

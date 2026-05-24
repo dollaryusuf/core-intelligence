@@ -171,6 +171,11 @@ export const VaultIntelligenceNode: React.FC<VaultIntelligenceNodeProps> = ({ va
         <div className="text-right">
           <p className="text-[10px] font-mono text-muted uppercase">Total Node AUM</p>
           <p className="text-3xl font-bold font-mono tracking-tighter text-accent">${vault.aum.toLocaleString()}</p>
+          {vault.ownerAddress && (
+            <p className="text-[10px] font-mono text-white/50 mt-1 uppercase">
+              BOUND OWNER: <span className="text-accent underline font-bold">{vault.ownerAddress.slice(0, 6)}...{vault.ownerAddress.slice(-4)}</span>
+            </p>
+          )}
         </div>
       </div>
 

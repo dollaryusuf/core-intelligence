@@ -16,16 +16,25 @@ import { cn } from '../lib/utils';
 interface DeployNodeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onDeploy: (vault: { name: string; aum: number; type: string; mandate: string }) => void;
+  onDeploy: (vault: { name: string; aum: number; type: string; mandate: string; ownerAddress?: string }) => void;
+  walletConnected?: boolean;
+  walletAddress?: string | null;
 }
 
-export const DeployNodeModal: React.FC<DeployNodeModalProps> = ({ isOpen, onClose, onDeploy }) => {
+export const DeployNodeModal: React.FC<DeployNodeModalProps> = ({ isOpen, onClose, onDeploy, walletConnected = false, walletAddress = null }) => {
   const [step, setStep] = useState<'form' | 'provisioning' | 'success'>('form');
   const [name, setName] = useState('');
   const [aum, setAum] = useState(100000);
   const [mandate, setMandate] = useState('Market Neutral');
   const [syncLevel, setSyncLevel] = useState('High-Performance');
+  const [ownerAddress, setOwnerAddress] = useState('');
   const [logs, setLogs] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (isOpen && walletAddress) {
+      setOwnerAddress(walletAddress);
+    }
+  }, [isOpen, walletAddress]);
 
   const provisioningLogs = [
     "[SYSTEM] Allocating Neural Compute for Cluster Node...",
@@ -57,12 +66,14 @@ export const DeployNodeModal: React.FC<DeployNodeModalProps> = ({ isOpen, onClos
       name,
       aum,
       type: mandate === 'Aggressive Alpha' ? 'Alpha' : mandate === 'Market Neutral' ? 'DAO' : 'Personal',
-      mandate
+      mandate,
+      ownerAddress: ownerAddress || undefined
     });
     // Reset state for next time
     setStep('form');
     setName('');
     setAum(100000);
+    setOwnerAddress('');
     setLogs([]);
   };
 
@@ -111,6 +122,26 @@ export const DeployNodeModal: React.FC<DeployNodeModalProps> = ({ isOpen, onClos
                   onChange={(e) => setName(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-xl py-4 px-4 text-white focus:border-accent outline-none font-mono"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono text-muted uppercase tracking-widest">Owner Wallet Address</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g., 0x71C... (or autodetected bound address)"
+                  value={ownerAddress}
+                  onChange={(e) => setOwnerAddress(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-4 px-4 text-white focus:border-accent outline-none font-mono text-xs"
+                />
+                {!walletConnected ? (
+                  <p className="text-[9px] text-amber-500/80 font-mono tracking-wide">
+                    ⚠️ CONNECT VAULT to lock this node configuration with hardware wallet synchronization. (Non-Custodial Protocol)
+                  </p>
+                ) : (
+                  <p className="text-[9px] text-accent font-mono tracking-wide">
+                    ✓ SECURE HANDSHAKE ACTIVE: Locked to active non-custodial bound proxy.
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-6">

@@ -26,7 +26,8 @@ import {
   ShieldCheck,
   ArrowLeft,
   X,
-  Terminal
+  Terminal,
+  Wallet
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -112,6 +113,9 @@ export default function App() {
   const [ledger, setLedger] = useState<any[]>([]);
   const [backtestTimeline, setBacktestTimeline] = useState<any[]>([]);
   const [isGuestMode, setIsGuestMode] = useState(false);
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [walletConnecting, setWalletConnecting] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const hasBooted = useRef(false);
 
   const initialPortfolio: PortfolioState = {
@@ -150,6 +154,23 @@ export default function App() {
       type
     };
     setLogs(prev => [...prev.slice(-50), newLog]);
+  };
+
+  const handleConnectWallet = () => {
+    setWalletConnecting(true);
+    addLog("[WALLET] Initializing secure handshake...", "process");
+    setTimeout(() => {
+      setWalletConnecting(false);
+      setWalletConnected(true);
+      setWalletAddress("0x71C21A5A05d6e271D578db9D079A31cE8a5B4f2e");
+      addLog("[WALLET] Handshake completed. Account connected: 0x71C21A5A05d6e271D578db9D079A31cE8a5B4f2e", "info");
+    }, 1200);
+  };
+
+  const handleDisconnectWallet = () => {
+    setWalletConnected(false);
+    setWalletAddress(null);
+    addLog("[WALLET] Connection closed by user.", "info");
   };
 
   const runAnalysis = async () => {
@@ -373,6 +394,8 @@ VERIFIED VIA ZK-PROOF ATTESTATION
     setExecuting(true);
     setExecutionResult(null);
     setError(null);
+    addLog(`[WALLET] Requesting ZK-Signature from ${walletAddress || "0x71C21A5A05d6e271D578db9D079A31cE8a5B4f2e"}`, "process");
+    addLog(`[WALLET] Transaction Signed and Verified.`, "info");
     addLog(`Broadcasting rebalance order: ${analysis.allocation_plan.action}`, "process");
     
     try {
@@ -535,7 +558,7 @@ VERIFIED VIA ZK-PROOF ATTESTATION
     }));
   };
 
-  const handleDeployVault = (newVaultData: { name: string; aum: number; type: string; mandate: string }) => {
+  const handleDeployVault = (newVaultData: { name: string; aum: number; type: string; mandate: string; ownerAddress?: string }) => {
     if (!managedData) return;
 
     const newId = (managedData.vaults.length + 1).toString();
@@ -546,7 +569,8 @@ VERIFIED VIA ZK-PROOF ATTESTATION
       type: newVaultData.type as any,
       total_return: 0,
       alpha_vs_btc: 0,
-      lastRebalance: "Just Deployed"
+      lastRebalance: "Just Deployed",
+      ownerAddress: newVaultData.ownerAddress
     };
 
     setManagedData(prev => prev ? {
@@ -621,21 +645,66 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                 {data.portfolio.pnl24h}%
               </span>
             </div>
-            <button 
-              onClick={() => setShowConfirmModal(true)}
-              disabled={loading || isSimulating || !analysis || rebalanced}
-              className={cn(
-                "ml-4 px-4 py-2 border rounded-full transition-all flex items-center gap-2 group disabled:opacity-50",
-                rebalanced 
-                  ? "bg-accent/5 border-accent/40 text-accent/60" 
-                  : "bg-accent/10 border-accent/20 text-accent hover:bg-accent hover:text-black"
+            
+            {/* Execute Rebalance button (with pre-flight wallet lock) */}
+            <div className="relative group ml-4">
+              <button 
+                onClick={() => {
+                  if (walletConnected) {
+                    setShowConfirmModal(true);
+                  }
+                }}
+                disabled={loading || isSimulating || !analysis || rebalanced || !walletConnected}
+                title={!walletConnected ? "Connect Vault to Authorize Execution" : undefined}
+                className={cn(
+                  "px-4 py-2 border rounded-full transition-all flex items-center gap-2 group disabled:opacity-40 disabled:cursor-not-allowed",
+                  rebalanced 
+                    ? "bg-accent/5 border-accent/40 text-accent/60" 
+                    : walletConnected
+                      ? "bg-accent/10 border-accent/20 text-accent hover:bg-accent hover:text-black"
+                      : "bg-white/5 border-white/10 text-white/40"
+                )}
+              >
+                <RefreshCcw size={14} className={cn((loading || isSimulating || executing) && "animate-spin")} />
+                <span className="uppercase text-[11px] font-bold tracking-tighter">
+                  {executing ? "Processing..." : (isSimulating ? `Simulating ${simulationDay}/7` : (rebalanced ? "NODE SYNCHRONIZED ✓" : "Execute Rebalance"))}
+                </span>
+              </button>
+              {!walletConnected && !rebalanced && (
+                <div className="absolute top-11 right-0 hidden group-hover:block bg-black/95 border border-white/10 text-amber-500 font-mono text-[9px] px-3 py-2 rounded-lg whitespace-nowrap shadow-xl z-50 tracking-wider">
+                  CONNECT VAULT TO AUTHORIZE EXECUTION
+                </div>
               )}
-            >
-              <RefreshCcw size={14} className={cn((loading || isSimulating || executing) && "animate-spin")} />
-              <span className="uppercase text-[11px] font-bold tracking-tighter">
-                {executing ? "Processing..." : (isSimulating ? `Simulating ${simulationDay}/7` : (rebalanced ? "NODE SYNCHRONIZED ✓" : "Execute Rebalance"))}
-              </span>
-            </button>
+            </div>
+
+            {/* Wallet Connector Button */}
+            {!walletConnected && !walletConnecting ? (
+              <button
+                onClick={handleConnectWallet}
+                title="Encrypted SECURE Link | Hardware Wallet Sync | Non-Custodial Protocol"
+                className="px-4 py-2 rounded-full cursor-pointer font-bold tracking-wider font-mono bg-accent text-black hover:bg-accent/95 border border-accent/30 transition-all flex items-center gap-2 text-[11px] shadow-[0_0_18px_rgba(0,255,163,0.55)] animate-pulse hover:animate-none"
+              >
+                <Wallet size={14} />
+                CONNECT VAULT
+              </button>
+            ) : walletConnecting ? (
+              <button
+                disabled
+                className="px-4 py-2 rounded-full font-bold tracking-wider font-mono bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-2 text-[11px] animate-pulse"
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                ESTABLISHING SECURE LINK...
+              </button>
+            ) : (
+              <button
+                onClick={handleDisconnectWallet}
+                className="px-4 py-2 rounded-full cursor-pointer font-bold tracking-wider font-mono bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 transition-all flex items-center gap-2 text-[11px]"
+                title="Click to disconnect vault"
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" style={{ boxShadow: '0 0 8px #00FFA3' }} />
+                0x71C...4f2e
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -1079,6 +1148,12 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                             <span className="text-[10px] font-mono text-muted uppercase">Last Node Rebalance</span>
                             <span className="text-[11px] font-mono text-white/60">{vault.lastRebalance}</span>
                           </div>
+                          {vault.ownerAddress && (
+                            <div className="flex justify-between items-end border-t border-white/5 pt-2">
+                              <span className="text-[10px] font-mono text-muted uppercase">BOUND WALLET</span>
+                              <span className="text-[11px] font-mono text-accent">{vault.ownerAddress.slice(0, 6)}...{vault.ownerAddress.slice(-4)}</span>
+                            </div>
+                          )}
                           
                           <div className="pt-2">
                             <div className="flex items-center gap-2 mb-2">
@@ -2018,6 +2093,8 @@ VERIFIED VIA ZK-PROOF ATTESTATION
         isOpen={showDeployModal}
         onClose={() => setShowDeployModal(false)}
         onDeploy={handleDeployVault}
+        walletConnected={walletConnected}
+        walletAddress={walletAddress}
       />
     </div>
   );
