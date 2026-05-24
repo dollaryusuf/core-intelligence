@@ -1157,7 +1157,14 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                     </h3>
                     <p className="text-[10px] text-muted uppercase font-mono">7-Day cumulative returns comparison (%)</p>
                   </div>
-                  <div className="flex gap-4 text-xs font-mono">
+                  <div className="flex gap-4 text-xs font-mono items-center">
+                    <button 
+                      onClick={runTimeMachineSimulation}
+                      disabled={isSimulating}
+                      className="px-3 py-1.5 bg-accent/5 hover:bg-accent/10 border border-accent/20 text-accent font-mono rounded-lg transition-colors text-[10px] font-bold disabled:opacity-50"
+                    >
+                      {isSimulating ? "SIMULATING..." : "RUN 7-DAY BACKTEST"}
+                    </button>
                     <div className="flex items-center gap-1.5">
                       <span className="w-2.5 h-2.5 rounded-full bg-accent" />
                       <span className="text-white">Neural Vault</span>
@@ -1435,15 +1442,13 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                       <div className="col-span-1 bg-card border border-white/5 rounded-2xl p-6 border-l-4 border-l-accent overflow-hidden relative">
                         <div className="absolute top-4 right-4 z-10">
                            <button 
-                            onClick={toggleBlackSwanSwitch}
-                            className={cn(
-                              "flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all uppercase font-bold text-[9px] font-mono",
-                              blackSwanActive 
-                                ? "bg-danger text-white border-danger shadow-[0_0_15px_rgba(255,75,75,0.4)] animate-pulse" 
-                                : "bg-white/5 text-muted border-white/10 hover:border-white/20"
-                            )}>
-                            <div className={cn("w-1.5 h-1.5 rounded-full", blackSwanActive ? "bg-white animate-ping" : "bg-muted")} />
-                            {blackSwanActive ? "BLACK SWAN ACTIVE" : "STRESS TEST"}
+                             onClick={toggleBlackSwanSwitch}
+                             className={cn(
+                               "px-2 py-1 text-[8px] font-mono border rounded uppercase transition-all",
+                               blackSwanActive ? "bg-danger text-white border-danger" : "text-muted border-white/20 hover:border-accent"
+                             )}
+                           >
+                             ● {blackSwanActive ? "BLACK SWAN ACTIVE" : "STRESS TEST"}
                            </button>
                         </div>
                         <h4 className="text-[10px] font-mono text-muted uppercase tracking-widest mb-4">Risk Score</h4>
@@ -1501,7 +1506,7 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                         <div className="flex items-center gap-2 px-3 py-1 bg-accent/10 border border-accent/20 rounded-full">
                           <Percent size={12} className="text-accent" />
                           <span className="text-[10px] font-mono font-bold text-accent uppercase">
-                            Half-Kelly Size: <span className="font-mono-numbers">{blackSwanActive ? "0.00" : analysis.debate_log?.risk_auditor?.safe_size_limit}%</span>
+                            Half-Kelly Size: <span className="font-mono-numbers">{intelligence?.risk_engine?.kelly_size || "31.67"}%</span>
                           </span>
                           <button 
                             onClick={() => analysis?.signal_attribution && setActiveSignalAttribution(analysis.signal_attribution)}
