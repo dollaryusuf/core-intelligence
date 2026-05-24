@@ -429,10 +429,20 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap');
     
+    /* Remove Streamlit top decoration and white header bar */
+    [data-testid="stHeader"] {
+        display: none !important;
+    }
+    
     .stApp { 
-        background-color: #030303; 
+        background-color: #050505 !important; 
         color: #e0e2e5; 
         font-family: 'Space Grotesk', sans-serif; 
+    }
+    
+    /* Padding: give the UI room to breathe */
+    .block-container {
+        padding: 2rem 3rem !important;
     }
     
     /* Code and Technical typography */
@@ -444,11 +454,47 @@ st.markdown("""
         font-family: 'JetBrains Mono', monospace !important;
     }
     
+    /* Metrics: Force white-space nowrap and custom font-size so they don't cut off */
     [data-testid="stMetricValue"] { 
         color: #00FFA3 !important; 
         font-family: 'JetBrains Mono', monospace !important;
         font-weight: 700 !important;
-        font-size: 1.8rem !important; 
+        font-size: 1.6rem !important; 
+        white-space: nowrap !important;
+    }
+    
+    /* Tabs: Style to be uppercase with #00FFA3 indicators and remove grey borders */
+    div[data-testid="stTabBar"] button {
+        text-transform: uppercase !important;
+        font-family: 'JetBrains Mono', monospace !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        border: none !important;
+        background-color: transparent !important;
+        color: #8E9299 !important;
+    }
+    div[data-testid="stTabBar"] button[aria-selected="true"] {
+        color: #00FFA3 !important;
+        border-bottom: 2px solid #00FFA3 !important;
+    }
+    div[data-testid="stTabBar"] {
+        border-bottom: none !important;
+    }
+    div[data-baseweb="tab-highlight"] {
+        background-color: #00FFA3 !important;
+    }
+    div[data-baseweb="tab-border"] {
+        background-color: transparent !important;
+    }
+    button[data-baseweb="tab"] {
+        text-transform: uppercase !important;
+        font-weight: 600 !important;
+        font-family: 'JetBrains Mono', monospace !important;
+        border-bottom: none !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #00FFA3 !important;
+        border-bottom: 2px solid #00FFA3 !important;
     }
     
     .status-live { color: #00FFA3; font-weight: bold; font-family: 'JetBrains Mono', monospace; }
@@ -555,7 +601,7 @@ with st.sidebar:
 
 
 # --- 8. HEADER PORTAL ---
-c1, c2, c3, c4 = st.columns([2, 1, 1, 1.2])
+c1, c2, c3, c4 = st.columns([2, 1.2, 1.2, 1.2])
 
 with c1:
     st.title("🛡️ SoSo-Vault")
@@ -607,14 +653,14 @@ with c4:
             ✓ Safe Handshake Locked
         </div>
         """, unsafe_allow_html=True)
-        col_w1, col_w2 = st.columns([3, 1])
+        col_w1, col_w2 = st.columns([3.2, 1])
         with col_w1:
             addr = st.session_state.wallet_address
             truncated_addr = f"{addr[:6]}...{addr[-4:]}" if addr else "0x71C...4f2e"
             st.markdown(f"""
-            <div style="display: inline-flex; align-items: center; background-color: rgba(0, 255, 163, 0.04); border: 1px solid rgba(0, 255, 163, 0.15); padding: 8px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: bold; color: #00FFA3; gap: 8px; width: 100%; height: 38px;">
-                <div style="width: 7px; height: 7px; border-radius: 50%; background-color: #00FFA3; box-shadow: 0 0 8px #00FFA3;" class="pulse-dot pulse-emerald"></div>
-                <span>{truncated_addr}</span>
+            <div style="display: inline-flex; align-items: center; justify-content: start; background-color: rgba(0, 255, 163, 0.04); border: 1px solid rgba(0, 255, 163, 0.15); padding: 8px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: bold; color: #00FFA3; gap: 8px; width: 100%; height: 38px; white-space: nowrap;">
+                <div style="width: 7px; height: 7px; border-radius: 50%; background-color: #00FFA3; box-shadow: 0 0 8px #00FFA3; flex-shrink: 0;" class="pulse-dot pulse-emerald"></div>
+                <span style="flex-shrink: 0; overflow: hidden; text-overflow: ellipsis;">{truncated_addr}</span>
             </div>
             """, unsafe_allow_html=True)
         with col_w2:
@@ -717,19 +763,22 @@ with tab2:
         
         # Sizing model calculations
         sentiment_val = market_data.get("sentiment_score", 0.58)
-        kelly_percentage = risk_engine.calculate_half_kelly(sentiment_val)
+        try:
+            kelly_size = risk_engine.calculate_half_kelly(sentiment_val)
+        except Exception:
+            kelly_size = 0.0
+        kelly_percentage = kelly_size
         
         st.markdown("---")
         st.markdown("#### 📐 Mathematical Half-Kelly Position Sizing")
-  
-    st.markdown(rf"""
-**Execution Formula (Half-Kelly Criterion):**
-$$f^* = 0.5 \times \frac{{b \cdot p - q}}{{b}}$$
-
-- Payoff Target Edge ($b$): **{risk_engine.b_risk_reward}**
-
- Calculated Neural Sizing Limit: <span style='font-family: "JetBrains Mono"; font-weight: bold; color: #00FFA3;'>{kelly_size}%</span>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            f"**Execution Formula (Half-Kelly Criterion):**\n"
+            f"$$f^* = 0.5 \\times \\frac{{b \\cdot p - q}}{{b}}$$\n\n"
+            f"- Win Probability Anchor ($p$): **{sentiment_val * 100:.1f}%**\n"
+            f"- Payoff Target Edge ($b$): **{risk_engine.b_risk_reward}**\n\n"
+            f"➡️ Calculated Neural Sizing Limit: <span style='font-family: \"JetBrains Mono\"; font-weight: bold; color: #00FFA3; font-size: 16px;'>{kelly_size}%</span>",
+            unsafe_allow_html=True
+        )
         
     with col_e2:
         st.markdown("### 🛡️ Hard-Coded Decoupled Auditor Rules")
