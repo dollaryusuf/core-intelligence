@@ -97,7 +97,7 @@ export const executeRebalance = async (
   portfolio: PortfolioState
 ): Promise<any> => {
   try {
-    const response = await fetch("/api/execute", {
+    const response = await fetch("/api/rebalance", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

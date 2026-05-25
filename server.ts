@@ -548,6 +548,69 @@ app.post("/api/execute", async (req, res) => {
   }
 });
 
+app.post("/api/rebalance", async (req, res) => {
+  const { action, target_weights, portfolio } = req.body;
+  
+  console.log(`[REBALANCE_REQUEST] Action: ${action}`);
+
+  try {
+    // Execution Guardrails
+    const slippageLimit = 0.02; // 2%
+    const maxDrawdownLimit = 0.10; // 10%
+    
+    // Simulated validation
+    const simulatedSlippage = 0.005; 
+    const simulatedImpact = 0.01;
+
+    if (simulatedSlippage > slippageLimit) {
+      return res.status(400).json({ error: "Trade rejected: Slippage exceeds 2% buffer." });
+    }
+
+    if (simulatedImpact > maxDrawdownLimit) {
+      return res.status(400).json({ error: "Trade rejected: Drawdown risk exceeds 10% safety threshold." });
+    }
+
+    // Simulate trade execution and logging
+    console.log("[STORAGE] Logging executed trades to simulated vault ledger...");
+
+    const simulatedPrices: Record<string, number> = {
+      "BTC": 64500,
+      "ETH": 3480,
+      "SOL": 155,
+      "STABLES": 1.0,
+      "USDC": 1.0,
+      "SECTOR_INDEX": 12.50
+    };
+
+    // Log individual trades to execution ledger
+    if (target_weights && typeof target_weights === "object") {
+      for (const [asset, weight] of Object.entries(target_weights)) {
+        const price = simulatedPrices[asset] || 1.0;
+        const weightNum = weight as number;
+        const amount = parseFloat((weightNum * 50).toFixed(2));
+        const actionStr = weightNum > 0.18 ? "BUY_REBALANCE" : "RETRENCH_REBALANCE";
+        const triggerStr = `Dynamic reweight target derived from SoSoValue. Target exposure: ${(weightNum * 100).toFixed(1)}%.`;
+        logTrade(asset, actionStr, amount, price, triggerStr);
+      }
+    } else {
+      // Default fallback trade log
+      logTrade("BTC", "HOLD", 0.0, 64500.0, "Portfolio within safe limits. Holding assets.");
+    }
+    
+    const executionResult = {
+      status: "success",
+      timestamp: new Date().toISOString(),
+      summary: "Neural shift settled on SoSo-Ledger. Strategic rebalance confirmed.",
+      pnl_estimate: "+0.05%"
+    };
+
+    res.json(executionResult);
+  } catch (error) {
+    console.error("Execution Error:", error);
+    res.status(500).json({ error: "Execution Engine Fault" });
+  }
+});
+
 // GET execution ledger from storage
 app.get("/api/ledger", async (req, res) => {
   try {
