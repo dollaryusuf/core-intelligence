@@ -39,6 +39,7 @@ export interface SoSoVaultAnalysis {
       sentiment_velocity: string;
       global_risk_score: number;
     };
+    sentiment_score?: number;
   };
   risk_engine: {
     risk_score: number; // 0-100
