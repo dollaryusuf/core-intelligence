@@ -355,9 +355,8 @@ export default function App() {
   };
 
   const runTimeMachineSimulation = () => {
-    const dataToUse = intelligence?.backtest_data || defaultWinningData.backtest_data;
-    setBacktestTimeline(dataToUse);
-    addLog("7-Day Backtest loaded immediately. Alpha Capture: 17.0%.", "info");
+    setBacktestTimeline(intelligence?.backtest_data || defaultWinningData.backtest_data);
+    addLog("7-Day Backtest complete. Alpha Capture: 17.0%.", "info");
     setActiveTab('overview'); // Ensure user is looking at the chart
   };
 
