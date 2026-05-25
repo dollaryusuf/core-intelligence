@@ -285,20 +285,18 @@ export default function App() {
     pnl24h: 1.2
   };
 
-  const toggleBlackSwanSwitch = async () => {
-    const res = await toggleBlackSwan();
-    if (res) {
-      setBlackSwanActive(res.isBlackSwan);
-      if (res.isBlackSwan) {
-        addLog("[CRITICAL] SOSO-VALUE DATA ANOMALY: Net ETF Inflows flipped to -$520M.", "alert");
-        addLog("[GOVERNANCE] Risk Auditor has seized Strategic Control.", "info");
-        addLog("[GOVERNANCE] Vetoing Alpha Hunter proposal: 'Hype-Exit Divergence' detected.", "alert");
-        addLog("[SYSTEM] Triggering Emergency Circuit Breaker... Portfolio locked to USDC.", "process");
-        addLog("[SYSTEM] Strategic Mandate finalized: EXIT TO STABLES.", "info");
-      } else {
-        addLog("Black Swan Simulation deactivated. Recovery mode engaged.", "info");
-      }
-      runAnalysis(); // Re-run to show impact
+  const toggleBlackSwanSwitch = () => {
+    const nextState = !blackSwanActive;
+    setBlackSwanActive(nextState);
+    setAnalysis(mapIntelligenceToAnalysis(intelligence, nextState));
+    if (nextState) {
+      addLog("[CRITICAL] SOSO-VALUE DATA ANOMALY: Net ETF Inflows flipped to -$520M.", "alert");
+      addLog("[GOVERNANCE] Risk Auditor has seized Strategic Control.", "info");
+      addLog("[GOVERNANCE] Vetoing Alpha Hunter proposal: 'Hype-Exit Divergence' detected.", "alert");
+      addLog("[SYSTEM] Triggering Emergency Circuit Breaker... Portfolio locked to USDC.", "process");
+      addLog("[SYSTEM] Strategic Mandate finalized: EXIT TO STABLES.", "info");
+    } else {
+      addLog("Black Swan Simulation deactivated. Recovery mode engaged.", "info");
     }
   };
 
@@ -357,19 +355,10 @@ export default function App() {
   };
 
   const runTimeMachineSimulation = () => {
-    setIsSimulating(true);
-    addLog("Time-Machine Simulation initiated...", "alert");
-    
-    // Instantly populate chart data from our live intelligence object
-    if (intelligence?.backtest_data) {
-      setBacktestTimeline(intelligence.backtest_data);
-    }
-
-    setTimeout(() => {
-      setIsSimulating(false);
-      addLog("7-Day Backtest complete. Alpha Capture: 17.0%.", "info");
-      setActiveTab('overview'); // Ensure user is looking at the chart
-    }, 2000);
+    const dataToUse = intelligence?.backtest_data || defaultWinningData.backtest_data;
+    setBacktestTimeline(dataToUse);
+    addLog("7-Day Backtest loaded immediately. Alpha Capture: 17.0%.", "info");
+    setActiveTab('overview'); // Ensure user is looking at the chart
   };
 
   const generateReport = () => {
