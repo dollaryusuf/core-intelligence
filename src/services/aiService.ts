@@ -160,3 +160,9 @@ export const getAuditLedger = async (): Promise<any[]> => {
     return [];
   }
 };
+// Compatibility Exports to prevent build errors
+export const generateMockData = getInitialMarketState;
+export const getSoSoVaultAnalysis = fetchNeuralConsensus;
+export const executeRebalance = dispatchRebalance;
+export const getHostBacktestTimeline = getQuantBacktest;
+export const getExecutionLedger = getAuditLedger;
