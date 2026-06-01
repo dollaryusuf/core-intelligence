@@ -1,22 +1,20 @@
-# 🛡️ SoSo-Vault: Core Intelligence
-**Autonomous Multi-Agent Treasury Management Empire powered by SoSoValue**
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
+</div>
 
-## 🚀 Overview
-SoSo-Vault is a high-fidelity agentic treasury system built for the solo quant founder. It transforms raw institutional data from SoSoValue into autonomous on-chain growth through a **Multi-Agent Consensus Model**.
+# Run and deploy your AI Studio app
 
-### 🧠 Core Architecture
-- **Alpha Hunter Agent:** Scans SoSoValue News & Sector Index APIs to identify narrative-driven capital rotation opportunities.
-- **Risk Auditor Agent:** A hard-coded Python governance layer that enforces principal protection based on real-time ETF flows.
-- **Neural Execution:** Non-custodial settlement routed through SoSoValue's high-performance order book.
+This contains everything you need to run your app locally.
 
-## 🛠️ Technical Implementation (Wave 2)
-In this phase, we moved from simulation to a **Live Server-Client Architecture**:
-1. **Flask API Gateway:** A dedicated Python backend in `/api` to process verifiable quant signals.
-2. **Verifiability Protocol:** A "Raw Payload Inspector" allowing stakeholders to audit the SoSoValue data driving every neural decision.
-3. **Institutional Guardrails:** Implementation of the Half-Kelly Criterion and Liquidity VETOs to eliminate LLM-driven overconfidence.
+View your app in AI Studio: https://ai.studio/apps/15447f15-da51-471b-a798-e46ddb7d8a7b
 
-## 💻 Tech Stack
-- **Frontend:** React / Vite / Tailwind CSS
-- **Backend:** Python / Flask (Vercel Serverless)
-- **Intelligence:** Claude 3.5 Sonnet / Multi-Agent Orchestration
-- **Infrastructure:** SoSoValue Open API
+## Run Locally
+
+**Prerequisites:**  Node.js
+
+
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`

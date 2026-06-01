@@ -1,12 +1,8 @@
 {
-  "name": "SoSo-Vault: Core Intelligence",
-  "description": "Institutional-grade autonomous treasury management system powered by SoSoValue data streams and multi-agent consensus logic.",
-  "requestFramePermissions": [
-    "ALLOW_EXTERNAL_API_HANDSHAKE",
-    "ALLOW_NON_CUSTODIAL_WALLET_SYNC"
-  ],
+  "name": "SoSo-Vault",
+  "description": "On-chain treasury quant agent dashboard using SoSoValue market signals for narrative rotation and capital preservation.",
+  "requestFramePermissions": [],
   "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_PYTHON_QUANT_ENGINE",
-    "MAJOR_CAPABILITY_REAL_TIME_SOSOVALUE_INTEGRATION"
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
 }
