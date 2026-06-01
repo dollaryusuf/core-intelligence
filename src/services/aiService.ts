@@ -160,9 +160,21 @@ export const getAuditLedger = async (): Promise<any[]> => {
     return [];
   }
 };
-// Compatibility Exports to prevent build errors
+// =================================================================
+// COMPATIBILITY EXPORTS (Prevents Build Errors in App.tsx)
+// =================================================================
+
+/** 
+ * These aliases map the old "template" names to our new 
+ * Institutional Quant functions.
+ */
 export const generateMockData = getInitialMarketState;
 export const getSoSoVaultAnalysis = fetchNeuralConsensus;
 export const executeRebalance = dispatchRebalance;
 export const getHostBacktestTimeline = getQuantBacktest;
+export const getSimulationHistory = getQuantBacktest; // Redirects to backtest engine
 export const getExecutionLedger = getAuditLedger;
+export const toggleBlackSwan = triggerEmergencyOverride;
+export const getFundManagerState = getInitialMarketState; 
+export const getPythonAlphaData = getAlphaSignals;
+export const getLiveMarketData = getInitialMarketState;
