@@ -161,20 +161,17 @@ export const getAuditLedger = async (): Promise<any[]> => {
   }
 };
 // =================================================================
-// COMPATIBILITY EXPORTS (Prevents Build Errors in App.tsx)
+// COMPATIBILITY EXPORTS (FORCE ASYNC TO PREVENT CRASH)
 // =================================================================
 
-/** 
- * These aliases map the old "template" names to our new 
- * Institutional Quant functions.
- */
-export const generateMockData = getInitialMarketState;
-export const getSoSoVaultAnalysis = fetchNeuralConsensus;
-export const executeRebalance = dispatchRebalance;
-export const getHostBacktestTimeline = getQuantBacktest;
-export const getSimulationHistory = getQuantBacktest; // Redirects to backtest engine
-export const getExecutionLedger = getAuditLedger;
-export const toggleBlackSwan = triggerEmergencyOverride;
-export const getFundManagerState = getInitialMarketState; 
-export const getPythonAlphaData = getAlphaSignals;
-export const getLiveMarketData = getInitialMarketState;
+// We wrap these in 'async' because App.tsx expects a Promise (.then)
+export const generateMockData = async () => getInitialMarketState();
+export const getSoSoVaultAnalysis = async (s: any, sec: any, m: any, p: any) => fetchNeuralConsensus(s, sec, m, p);
+export const executeRebalance = async (a: any, t: any, p: any) => dispatchRebalance(a, t, p);
+export const getHostBacktestTimeline = async () => getQuantBacktest();
+export const getSimulationHistory = async () => getQuantBacktest();
+export const getExecutionLedger = async () => getAuditLedger();
+export const toggleBlackSwan = async () => triggerEmergencyOverride();
+export const getFundManagerState = async () => getInitialMarketState();
+export const getPythonAlphaData = async () => getAlphaSignals();
+export const getLiveMarketData = async () => getInitialMarketState();
