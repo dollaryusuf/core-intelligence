@@ -1,25 +1,8 @@
 {
-  "name": "SoSo-Vault: Neural Consensus Terminal",
-  "short_name": "SoSoVault",
-  "description": "Institutional-grade quantitative risk terminal. Synthesizes SoSoValue ETF liquidity data and social sentiment via a Neural Consensus architecture for treasury management and capital preservation.",
-  "version": "2.0.0",
-  "author": "SoSo-Vault Engineering",
-  "framework": {
-    "frontend": "React/Vite",
-    "backend": "Python/Flask (Vercel)",
-    "data_provider": "SoSoValue Production API"
-  },
+  "name": "SoSo-Vault",
+  "description": "On-chain treasury quant agent dashboard using SoSoValue market signals for narrative rotation and capital preservation.",
+  "requestFramePermissions": [],
   "majorCapabilities": [
-    "REAL_TIME_DATA_INGESTION",
-    "QUANTITATIVE_RISK_AUDITING",
-    "TELEGRAM_SENTINEL_INTEGRATION",
-    "NEURAL_NARRATIVE_CONSENSUS"
-  ],
-  "permissions": [
-    "external_api_access",
-    "webhook_notifications"
-  ],
-  "governance": {
-    "auditor_handshake": "EVM_0x42f883654e954c29c8e8E06A5884B2B36b80E921"
-  }
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

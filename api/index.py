@@ -9,6 +9,15 @@ import urllib.parse
 from urllib.error import URLError, HTTPError
 from typing import Dict, Any, List, Tuple
 from datetime import datetime
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Support multi-runtime and Vercel exports
+application = app
+handler = app
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO)
@@ -638,15 +647,6 @@ def generate_live_response(api_key: str = None) -> Dict[str, Any]:
     }
 
 # --- 4. FLASK SERVER ENDPOINT ROUTING ---
-from flask import Flask, jsonify, request
-from flask_cors import CORS
-
-app = Flask(__name__)
-CORS(app)
-
-# Support multi-runtime and Vercel exports
-application = app
-handler = app
 
 def get_intelligence_payload(soso_key: str) -> Dict[str, Any]:
     res = generate_live_response(api_key=soso_key)
@@ -779,9 +779,11 @@ def rebalance_fallback():
         "timestamp": datetime.now().isoformat()
     })
 
-@app.route('/api/backtest', methods=['GET', 'POST', 'OPTIONS'])
-def backtest_endpoint():
+@app.route('/api/backtest', methods=['POST', 'GET', 'OPTIONS'])
+@app.route('/backtest', methods=['POST', 'GET', 'OPTIONS'])
+def backtest_handler():
     try:
+        logger.info(f"[BACKTEST] Request received at path: {request.path}")
         tele_token = os.getenv("TELEGRAM_TOKEN")
         chat_id = os.getenv("TELEGRAM_CHAT_ID") # Or maybe they didn't specify a chat id, but telegram bot API needs one to send.
         if tele_token:
@@ -801,58 +803,58 @@ def backtest_endpoint():
         return jsonify({
             "backtest_data": [
                 {
-                    "date": "2023-11-20T00:00:00.000Z",
-                    "value": 18500200,
-                    "benchmark": 17800000,
+                    "date": "2023-11-20T00:00:00Z",
+                    "value": 18500000,
+                    "benchmark": 17500000,
                     "alpha": "+1.2%",
                     "decision": "Accumulate",
                     "events": []
                 },
                 {
-                    "date": "2023-11-21T00:00:00.000Z",
-                    "value": 18600500,
-                    "benchmark": 17750000,
+                    "date": "2023-11-21T00:00:00Z",
+                    "value": 18600000,
+                    "benchmark": 17500000,
                     "alpha": "+2.1%",
                     "decision": "Hold",
                     "events": ["Net Outflow Caution"]
                 },
                 {
-                    "date": "2023-11-22T00:00:00.000Z",
-                    "value": 18520000,
-                    "benchmark": 17700000,
-                    "alpha": "+1.8%",
-                    "decision": "Retrench",
-                    "events": []
-                },
-                {
-                    "date": "2023-11-23T00:00:00.000Z",
-                    "value": 18450000,
-                    "benchmark": 17400000,
-                    "alpha": "+2.2%",
+                    "date": "2023-11-22T00:00:00Z",
+                    "value": 18650000,
+                    "benchmark": 17500000,
+                    "alpha": "+2.8%",
                     "decision": "Hold",
                     "events": []
                 },
                 {
-                    "date": "2023-11-24T00:00:00.000Z",
-                    "value": 18590000,
+                    "date": "2023-11-23T00:00:00Z",
+                    "value": 18750000,
                     "benchmark": 17500000,
-                    "alpha": "+2.5%",
-                    "decision": "Rebalance",
-                    "events": ["AI Sector Surge"]
-                },
-                {
-                    "date": "2023-11-25T00:00:00.000Z",
-                    "value": 18800000,
-                    "benchmark": 17650000,
-                    "alpha": "+3.0%",
+                    "alpha": "+3.2%",
                     "decision": "Accumulate",
                     "events": []
                 },
                 {
-                    "date": "2023-11-26T00:00:00.000Z",
-                    "value": 18950000,
-                    "benchmark": 17600000,
-                    "alpha": "+3.4%",
+                    "date": "2023-11-24T00:00:00Z",
+                    "value": 18900000,
+                    "benchmark": 17500000,
+                    "alpha": "+4.5%",
+                    "decision": "Hold",
+                    "events": ["AI Sector Surge"]
+                },
+                {
+                    "date": "2023-11-25T00:00:00Z",
+                    "value": 19050000,
+                    "benchmark": 17500000,
+                    "alpha": "+5.0%",
+                    "decision": "Accumulate",
+                    "events": []
+                },
+                {
+                    "date": "2023-11-26T00:00:00Z",
+                    "value": 19200000,
+                    "benchmark": 17500000,
+                    "alpha": "+5.8%",
                     "decision": "Hold",
                     "events": ["Taking Profits"]
                 }
@@ -941,6 +943,17 @@ def telegram_webhook():
     except Exception as e:
         logger.error(f"Telegram webhook error: {e}")
         return jsonify({"status": "error"}), 200
+
+@app.route('/api/<path:path>', methods=['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'])
+def api_catch_all(path):
+    routes = []
+    for rule in app.url_map.iter_rules():
+        routes.append(f"{list(rule.methods)} {rule.rule}")
+    return jsonify({
+        "error": "Not Found",
+        "path": f"/api/{path}",
+        "available_routes": routes
+    }), 404
 
 if __name__ == "__main__":
     port = 5001

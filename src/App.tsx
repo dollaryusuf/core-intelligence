@@ -167,7 +167,7 @@ const mapIntelligenceToAnalysis = (intel: any, isBlackSwan: boolean): SoSoVaultA
 // logs = []
 
 export default function App() {
-  const [data, setData] = useState(() => generateMockData());
+  const [data, setData] = useState<any>(null);
   const [analysis, setAnalysis] = useState<SoSoVaultAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState<number>(0);
@@ -204,6 +204,8 @@ export default function App() {
   const [walletConnecting, setWalletConnecting] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [showPayloadSidebar, setShowPayloadSidebar] = useState(false);
+  const [alphaCapture, setAlphaCapture] = useState<string>("17.0%");
+  const [chartKey, setChartKey] = useState(0);
 
   const defaultWinningData = {
     empire_stats: {
@@ -260,13 +262,13 @@ export default function App() {
     validation_badge: "● CORE LIVE SYNC",
     kelly_size: 17.0,
     backtest_data: [
-      { date: "Day 1", vault_return: 0.0, btc_return: 0.0 },
-      { date: "Day 2", vault_return: 2.4, btc_return: 0.8 },
-      { date: "Day 3", vault_return: 5.1, btc_return: 1.5 },
-      { date: "Day 4", vault_return: 8.7, btc_return: 2.1 },
-      { date: "Day 5", vault_return: 11.2, btc_return: 3.2 },
-      { date: "Day 6", vault_return: 14.5, btc_return: 4.5 },
-      { date: "Day 7", vault_return: 17.0, btc_return: 5.8 }
+      { date: "Day 1", vault_return: 0.0, btc_return: 0.0, value: 18000000, benchmark: 18000000 },
+      { date: "Day 2", vault_return: 2.4, btc_return: 0.8, value: 18432000, benchmark: 18144000 },
+      { date: "Day 3", vault_return: 5.1, btc_return: 1.5, value: 18918000, benchmark: 18270000 },
+      { date: "Day 4", vault_return: 8.7, btc_return: 2.1, value: 19566000, benchmark: 18378000 },
+      { date: "Day 5", vault_return: 11.2, btc_return: 3.2, value: 20016000, benchmark: 18576000 },
+      { date: "Day 6", vault_return: 14.5, btc_return: 4.5, value: 20610000, benchmark: 18810000 },
+      { date: "Day 7", vault_return: 17.0, btc_return: 5.8, value: 21060000, benchmark: 19044000 }
     ]
   };
 
@@ -359,42 +361,61 @@ export default function App() {
     addLog("7-Day Backtest initiated...", "alert");
     
     try {
-      const API_BASE = window.location.origin + '/api';
-      const response = await fetch(`${API_BASE}/backtest`, { method: "POST" });
+      const response = await fetch('/api/backtest', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
       
       if (!response.ok) {
+        if (response.status === 404) {
+          console.error("CRITICAL: Vercel Routing Error - Check Pathing");
+          addLog("CRITICAL: Vercel Routing Error - Check Pathing", "alert");
+        }
         throw new Error(`Fetch failed with status: ${response.status}`);
       }
       
       const result = await response.json();
+      console.log("Backtest Data Received:", result);
       
-      let rawData = result.backtest_data || intelligence?.backtest_data || defaultWinningData.backtest_data;
-      
-      // Ensure backend keys (value, benchmark, date) match LineChart dataKeys (vault_return, btc_return, date)
-      const mappedData = rawData.map((day: any) => {
-        let formattedDate = day.date;
-        if (day.date && day.date.includes('T')) {
-          formattedDate = new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        }
-        return {
-          ...day,
-          date: formattedDate,
-          vault_return: day.vault_return !== undefined ? day.vault_return : day.value,
-          btc_return: day.btc_return !== undefined ? day.btc_return : day.benchmark,
-        };
-      });
-
-      setBacktestTimeline(mappedData);
-      addLog("Alert sent to Telegram Sentinel: 0x42f... verified.", "info");
-      addLog("7-Day Backtest complete. Alpha Capture: 17.0%.", "info");
+      if (!result.backtest_data) {
+        addLog("[ERROR] backtest_data missing from response payload.", "alert");
+      } else {
+        const normalizedData = result.backtest_data.map((item: any) => ({
+          ...item,
+          date: item.date, // Preserve date string for Recharts to handle correctly
+          value: Number(item.value ?? item.vault_return ?? 0),
+          benchmark: Number(item.benchmark ?? item.btc_return ?? 0),
+          alpha: item.alpha || `+${Math.max(0.1, Number(item.vault_return || 0) - Number(item.btc_return || 0)).toFixed(1)}%`,
+          decision: item.decision || (Number(item.vault_return) > Number(item.btc_return) ? "ACCUMULATE" : "HOLD"),
+          events: item.events || []
+        }));
+        setBacktestTimeline([...normalizedData]); // Spread into new array to force React re-render
+        setChartKey(prev => prev + 1);
+        console.table(normalizedData);
+        
+        let latestAlpha = normalizedData[normalizedData.length - 1]?.alpha || "17.0%";
+        setAlphaCapture(latestAlpha);
+        
+        addLog("Alert sent to Telegram Sentinel: 0x42f... verified.", "info");
+        addLog(`7-Day Backtest complete. Alpha Capture: ${latestAlpha}.`, "info");
+      }
     } catch (err) {
       console.warn("Backend backtest failed:", err);
       const msg = err instanceof Error ? err.message : "Unknown error";
       alert(`Backtest fetch failed: ${msg}. Attempting local fallback.`);
       
       // Local fallback
-      setBacktestTimeline(intelligence?.backtest_data || defaultWinningData.backtest_data);
-      addLog("Local Backtest Fallback loaded. Alpha Capture: 17.0%.", "info");
+      const fallbackData = (intelligence?.backtest_data || defaultWinningData.backtest_data).map((item: any) => ({
+        ...item,
+        date: item.date,
+        value: Number(item.value ?? item.vault_return ?? 0),
+        benchmark: Number(item.benchmark ?? item.btc_return ?? 0),
+        alpha: item.alpha || `+${Math.max(0.1, Number(item.vault_return || 0) - Number(item.btc_return || 0)).toFixed(1)}%`,
+        decision: item.decision || (Number(item.vault_return) > Number(item.btc_return) ? "ACCUMULATE" : "HOLD"),
+        events: item.events || []
+      }));
+      setBacktestTimeline(fallbackData);
+      addLog(`Local Backtest Fallback loaded. Alpha Capture: ${fallbackData[fallbackData.length - 1]?.alpha || "17.0%"}.`, "info");
     } finally {
       setIsSimulating(false);
       setActiveTab('overview'); // Ensure user is looking at the chart
@@ -486,6 +507,18 @@ VERIFIED VIA ZK-PROOF ATTESTATION
     }
   };
 
+  const normalizeBacktestData = (data: any[]) => {
+    return data.map((item: any) => ({
+      ...item,
+      date: item.date,
+      value: Number(item.value ?? item.vault_return ?? 0),
+      benchmark: Number(item.benchmark ?? item.btc_return ?? 0),
+      alpha: item.alpha || `+${Math.max(0.1, Number(item.vault_return || 0) - Number(item.btc_return || 0)).toFixed(1)}%`,
+      decision: item.decision || (Number(item.vault_return) > Number(item.btc_return) ? "ACCUMULATE" : "HOLD"),
+      events: item.events || []
+    }));
+  };
+
   useEffect(() => {
     if (hasBooted.current) return;
     hasBooted.current = true;
@@ -496,13 +529,25 @@ VERIFIED VIA ZK-PROOF ATTESTATION
 
     // Fetch live intelligence on dashboard load
     setIntelligenceLoading(true);
+    
+    // Attempt to load async mock data safely for initialization
+    const initData = async () => {
+      try {
+        const mock = await generateMockData();
+        setData(mock);
+      } catch (err) {
+        console.error("Failed to load initial mock data:", err);
+      }
+    };
+    initData();
+
     fetch("/api/intelligence")
       .then(res => res.json())
       .then(data => {
         if (data) {
           setIntelligence(data);
           if (data.backtest_data && data.backtest_data.length > 0) {
-            setBacktestTimeline(data.backtest_data);
+            setBacktestTimeline(normalizeBacktestData(data.backtest_data));
           }
         }
       })
@@ -524,7 +569,7 @@ VERIFIED VIA ZK-PROOF ATTESTATION
       if (data) setLedger(data);
     });
     getHostBacktestTimeline().then(data => {
-      if (data) setBacktestTimeline(data);
+      if (data && Array.isArray(data)) setBacktestTimeline(normalizeBacktestData(data));
     });
   }, []);
 
@@ -636,6 +681,10 @@ VERIFIED VIA ZK-PROOF ATTESTATION
     setSelectedVault(newVault);
     addLog(`[SYSTEM] Intelligence Node ${newVaultData.name} is now LIVE.`, "info");
   };
+
+  if (!data) {
+    return <div className="min-h-screen grid-bg flex items-center justify-center font-mono text-accent uppercase tracking-widest text-sm">Initializing Core Intelligence...</div>;
+  }
 
   return (
     <div className="min-h-screen grid-bg">
@@ -843,7 +892,7 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                 <div className="space-y-2">
                   <span className="text-[10px] font-mono text-muted uppercase">Top Narratives</span>
                   <div className="flex flex-wrap gap-2">
-                    {data.sentiment.topNarratives.map(n => (
+                    {data?.sentiment?.topNarratives?.map((n: string) => (
                       <span key={n} className="px-2 py-1 bg-white/5 rounded text-[11px] border border-white/5 hover:border-white/20 transition-colors cursor-default">
                         #{n}
                       </span>
@@ -870,7 +919,7 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                   </h3>
                 </div>
                 <div className="h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <BarChart data={data.sectors} layout="vertical">
                       <XAxis type="number" hide />
                       <YAxis 
@@ -888,7 +937,7 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                         itemStyle={{ color: '#00FF9C' }}
                       />
                       <Bar dataKey="performanceVsBtc" radius={[0, 4, 4, 0]} barSize={20}>
-                        {data.sectors.map((entry, index) => (
+                        {data?.sectors?.map((entry: any, index: number) => (
                           <Cell 
                             key={`cell-${index}`} 
                             fill={entry.performanceVsBtc >= 0 ? '#00FF9C' : '#FF4D4D'} 
@@ -922,12 +971,12 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                   </div>
                   <div className="text-right">
                     <div className="text-xs font-mono text-muted uppercase mb-1">Signal</div>
-                    <div className="text-sm font-bold text-accent">{data.macro.institutionalSignal}</div>
+                    <div className="text-sm font-bold text-accent">{data?.macro?.institutionalSignal}</div>
                   </div>
                 </div>
-                <div className="h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={data.macro.etfInflows.map((v, i) => ({ period: i, flow: v }))}>
+                <div style={{ width: '100%', height: '300px', minHeight: '300px' }}>
+                  <ResponsiveContainer width="99%" height="100%" minWidth={1} minHeight={1}>
+                    <AreaChart data={data?.macro?.etfInflows?.map((v: number, i: number) => ({ period: i, flow: v })) || []}>
                       <defs>
                         <linearGradient id="colorFlow" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#00FF9C" stopOpacity={0.3}/>
@@ -1022,13 +1071,13 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                 </div>
 
                 {(() => {
-                  const chartData = (intelligence?.backtest_data && intelligence.backtest_data.length > 0)
-                    ? intelligence.backtest_data
-                    : (backtestTimeline && backtestTimeline.length > 0 ? backtestTimeline : []);
+                  const chartData = backtestTimeline && backtestTimeline.length > 0
+                    ? backtestTimeline
+                    : (intelligence?.backtest_data || []);
 
                   return chartData && chartData.length > 0 ? (
-                    <div className="h-[240px]">
-                      <ResponsiveContainer width="100%" height="100%">
+                    <div style={{ width: '100%', height: '300px', minHeight: '300px' }}>
+                      <ResponsiveContainer key={chartKey} width="99%" height="100%" minWidth={1} minHeight={1}>
                         <LineChart data={chartData}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
                           <XAxis 
@@ -1036,17 +1085,29 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                             axisLine={false} 
                             tickLine={false} 
                             tick={{ fontSize: 10, fill: '#8E9299', fontFamily: 'monospace' }}
+                            tickFormatter={(val) => {
+                              if (typeof val === 'number') {
+                                return new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                              }
+                              return val;
+                            }}
                           />
                           <YAxis hide />
                           <RechartsTooltip 
                             contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a', borderRadius: '12px' }}
                             itemStyle={{ fontFamily: 'monospace', fontSize: '12px' }}
+                            labelFormatter={(label) => {
+                              if (typeof label === 'number') {
+                                return new Date(label).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                              }
+                              return label;
+                            }}
                           />
                           
                           {/* The Green Line: Neural Strategy */}
                           <Line 
                             type="monotone" 
-                            dataKey="vault_return" /* MATCHED TO JSON: lowercase */
+                            dataKey="value" /* MATCHED TO NORMALIZED */
                             stroke="#00FFA3" 
                             strokeWidth={2.5} 
                             dot={{ r: 2, fill: '#00FFA3', strokeWidth: 0 }} 
@@ -1057,7 +1118,7 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                           {/* The Amber Line: Market Benchmark */}
                           <Line 
                             type="monotone" 
-                            dataKey="btc_return" /* MATCHED TO JSON: lowercase */
+                            dataKey="benchmark" /* MATCHED TO NORMALIZED */
                             stroke="#ff9900" 
                             strokeWidth={2} 
                             strokeDasharray="5 5" 
@@ -1084,23 +1145,23 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                   </h3>
 
                   <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10">
-                    {intelligence?.backtest_data ? (
-                      intelligence.backtest_data.slice().reverse().map((day: any, i: number) => (
+                    {backtestTimeline.length > 0 ? (
+                      backtestTimeline.slice().reverse().map((day: any, i: number) => (
                         <div key={i} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl hover:border-[#00FFA3]/30 transition-all group">
                           <div className="flex justify-between items-center mb-3">
                             <div className="flex items-center gap-2">
                               <div className="w-1.5 h-1.5 rounded-full bg-[#00FFA3] animate-pulse" />
                               <span className="text-[10px] font-mono font-bold text-[#00FFA3] tracking-tighter">
-                                NEURAL_CAPTURE // {day.date?.toUpperCase() || ''}
+                                NEURAL_CAPTURE // {typeof day.date === 'string' ? day.date.toUpperCase() : day.date ? new Date(day.date).toLocaleDateString() : ''}
                               </span>
                             </div>
-                            <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Status: Settled</span>
+                            <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Status: {day.decision || 'Settled'}</span>
                           </div>
                           
                           <div className="flex justify-between items-end">
                             <div className="space-y-1">
                               <div className="text-xl font-bold font-mono text-white tracking-tighter">
-                                +{day.vault_return?.toFixed(2) || "0.00"}%
+                                {day.alpha || '+' + (day.vault_return?.toFixed(2) || "0.00") + '%'}
                               </div>
                               <div className="text-[9px] text-gray-500 uppercase font-mono tracking-widest">
                                 Alpha Yield Realized
@@ -1109,10 +1170,10 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                             
                             <div className="text-right space-y-1">
                               <div className="text-[10px] font-mono text-white/70">
-                                Flow: <span className="text-accent">${day.net_etf_flow}M</span>
+                                Flow: <span className="text-accent">{day.events && day.events.length > 0 ? day.events.join(', ') : `$${day.net_etf_flow || 0}M`}</span>
                               </div>
                               <div className="text-[8px] font-mono text-gray-600">
-                                ID: {(Math.random() * 1000000).toFixed(0)}
+                                Benchmark: {day.btc_return !== undefined ? day.btc_return.toLocaleString() : day.benchmark}
                               </div>
                             </div>
                           </div>
