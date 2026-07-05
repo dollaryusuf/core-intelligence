@@ -65,3 +65,27 @@
   box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
 }
 
+@keyframes scanner-sweep {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(2000%); opacity: 0; }
+}
+
+.animate-scanner {
+  animation: scanner-sweep 6s linear infinite;
+}
+
+/* Occasional horizontal "scanning" line inside a card — long idle gap between sweeps
+   so it reads as a live diagnostic pulse rather than constant motion. */
+@keyframes card-scan {
+  0%, 92% { transform: translateY(-8px); opacity: 0; }
+  94% { opacity: 1; }
+  98% { transform: translateY(calc(100% + 8px)); opacity: 1; }
+  100% { transform: translateY(calc(100% + 8px)); opacity: 0; }
+}
+
+.animate-card-scan {
+  animation: card-scan 8s ease-in-out infinite;
+}
+
