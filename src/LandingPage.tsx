@@ -188,7 +188,7 @@ export function LandingPage({ onLaunch, onGuestMode }: LandingPageProps) {
                 {/* Occasional scan line, staggered per card so they don't all fire in sync */}
                 <div
                   className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent animate-card-scan pointer-events-none"
-                  style={{ animationDelay: `${i * 2.4}s` }}
+                  style={{ animationDelay: `${i * 0.6}s` }}
                 />
 
                 <div className="flex items-center justify-between mb-5 text-[9px] font-mono uppercase tracking-widest text-slate-500">
