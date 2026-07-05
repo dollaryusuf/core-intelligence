@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { LogEntry } from '../types';
-import { cn } from '../lib/utils';
+import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AgentLoggerProps {

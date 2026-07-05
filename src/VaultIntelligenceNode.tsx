@@ -22,8 +22,8 @@ import {
   Tooltip as RechartsTooltip,
 } from 'recharts';
 import { motion } from 'motion/react';
-import { cn } from '../lib/utils';
-import { ManagedVault, AuditEvent } from '../types';
+import { cn } from './lib/utils';
+import { ManagedVault, AuditEvent } from './types';
 
 interface VaultIntelligenceNodeProps {
   vault: ManagedVault;
