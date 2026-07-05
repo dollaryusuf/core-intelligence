@@ -174,22 +174,24 @@ export function LandingPage({ onLaunch, onGuestMode }: LandingPageProps) {
           </motion.div>
         </div>
 
-        {/* Feature modules — "Technical Data Sheet" cards */}
-        <div className="max-w-6xl w-full mx-auto px-6 pb-16">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {MODULES.map((m, i) => (
-              <motion.div
-                key={m.title}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.35 + i * 0.1 }}
-                className="relative overflow-hidden p-6 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-xl animate-card-ambient hover:[animation-play-state:paused] hover:border-emerald-500/30 hover:shadow-[0_0_24px_rgba(16,185,129,0.12)] transition-colors"
-                style={{ animationDelay: `${i * 1.2}s` }}
+        {/* Feature modules — "Technical Data Sheet" cards, scrolling right-to-left */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.35 }}
+          className="w-full overflow-hidden pb-16"
+        >
+          <div className="flex gap-5 w-max animate-[ticker-scroll_28s_linear_infinite] hover:[animation-play-state:paused]">
+            {[...MODULES, ...MODULES, ...MODULES].map((m, i) => (
+              <div
+                key={`${m.title}-${i}`}
+                className="relative overflow-hidden shrink-0 w-[320px] p-6 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-xl animate-card-ambient hover:[animation-play-state:paused] hover:border-emerald-500/30 hover:shadow-[0_0_24px_rgba(16,185,129,0.12)] transition-colors"
+                style={{ animationDelay: `${(i % MODULES.length) * 1.2}s` }}
               >
                 {/* Occasional scan line, staggered per card so they don't all fire in sync */}
                 <div
                   className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent animate-card-scan pointer-events-none"
-                  style={{ animationDelay: `${i * 0.6}s` }}
+                  style={{ animationDelay: `${(i % MODULES.length) * 0.6}s` }}
                 />
 
                 <div className="flex items-center justify-between mb-5 text-[9px] font-mono uppercase tracking-widest text-slate-500">
@@ -202,10 +204,10 @@ export function LandingPage({ onLaunch, onGuestMode }: LandingPageProps) {
 
                 <h3 className="text-sm font-bold text-white uppercase tracking-wide mb-2 font-sans">{m.title}</h3>
                 <p className="text-[12px] text-slate-400 leading-relaxed">{m.body}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* Audit Status Bar — command-line footer, the trust anchor of the whole page */}
         <motion.div
