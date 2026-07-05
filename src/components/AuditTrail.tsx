@@ -12,7 +12,7 @@ import {
   Settings,
   Terminal
 } from 'lucide-react';
-import { cn } from './lib/utils';
+import { cn } from '../lib/utils';
 import { AuditEvent, ManagedVault } from '../types';
 
 interface AuditTrailProps {

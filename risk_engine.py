@@ -1,147 +1,187 @@
-import json
-import os
-import time
-from datetime import datetime, timedelta
-from typing import Dict, Any, List
+import logging
+from typing import Dict, Any, List, Tuple
 
-class PerformanceManager:
+# Configure Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("RiskEngine")
+
+class RiskEngine:
     """
-    Performance & Backtesting Manager.
-    Computes historical backtest charts (Neural Vault vs. BTC benchmark)
-    and maintains a persistent ledger of all execution trades.
+    Hard-Coded Quantitative Risk Engine.
+    Handles strict rule-based governance to bypass LLM overconfidence or hallucination.
     """
-    def __init__(self, ledger_file: str = "ledger.json"):
-        self.ledger_file = ledger_file
-        self._init_ledger()
+    def __init__(self):
+        # Operational limits of the Risk Engine
+        self.etf_outflow_threshold = -100000000.0  # -$100M Net Inflow
+        self.funding_rate_limit = 0.05             # 0.05% Leverage limit
+        self.sentiment_hype_bound = 0.80           # 80% AI Sentiment
 
-    def _init_ledger(self):
-        """Initializes empty JSON ledger if it doesn't already exist."""
-        if not os.path.exists(self.ledger_file):
-            self.save_ledger([])
-
-    def get_ledger(self) -> List[Dict[str, Any]]:
-        """Reads and returns the execution ledger."""
-        try:
-            if os.path.exists(self.ledger_file):
-                with open(self.ledger_file, 'r') as f:
-                    return json.load(f)
-        except Exception as e:
-            print(f"[PerformanceManager] Error reading ledger: {e}")
-        return []
-
-    def save_ledger(self, data: List[Dict[str, Any]]):
-        """Saves execution ledger data safely."""
-        try:
-            with open(self.ledger_file, 'w') as f:
-                json.dump(data, f, indent=2)
-        except Exception as e:
-            print(f"[PerformanceManager] Error saving ledger: {e}")
-
-    def log_trade(self, asset: str, action: str, amount: float, price: float, trigger_signal: str) -> Dict[str, Any]:
+    def calculate_kelly_size(self, win_probability: float, win_loss_ratio: float = 1.5) -> float:
         """
-        Logs a trade into the persistent transaction ledger.
-        Captures the SoSoValue triggers & target prices.
+        Calculates position sizing mathematically using the Kelly Criterion.
+        Uses Half-Kelly for conservative capital preservation.
+        
+        Formula: f* = (p * (b + 1) - 1) / b
+        where:
+        - p = probability of a positive outcome (win)
+        - b = win/loss ratio (risk/reward ratio)
         """
-        ledger = self.get_ledger()
-        
-        trade_entry = {
-            "id": f"TX-{int(time.time())}-{len(ledger) + 1}",
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "asset": asset,
-            "action": action,
-            "amount": float(amount),
-            "price": float(price),
-            "total_value": round(float(amount) * float(price), 2),
-            "trigger_signal": trigger_signal,
-            "status": "SETTLED"
-        }
-        
-        ledger.insert(0, trade_entry)  # Insert at raw descending chronological order
-        self.save_ledger(ledger)
-        print(f"[PerformanceManager] Trade logged to ledger: {trade_entry['id']}")
-        return trade_entry
-
-    def run_simulated_backtest(self, days: int = 7, sentiment_score: float = 0.5) -> List[Dict[str, Any]]:
-        """
-        Backtesting simulation engine.
-        Uses 7-day historical market state variance to calculate SoSo-Vault strategic rebalancing
-        outperforming the standard BTC baseline benchmark.
-        """
-        backtest_timeline = []
-        
-        # Base starting values at cumulative return = 0.0%
-        vault_cumulative = 0.0
-        btc_cumulative = 0.0
-        
-        # Hardcoded seed seeds representing historical daily returns for premium fidelity
-        # Uses standard historical sector indices & spot flows pattern from the API environment
-        daily_volatility_seeds = [
-            {"btc": 0.012, "sectors": 0.035, "flows": 120.0, "sentiment": 0.65},  # Day 1
-            {"btc": -0.008, "sectors": -0.015, "flows": -42.0, "sentiment": 0.58}, # Day 2
-            {"btc": 0.021, "sectors": 0.054, "flows": 210.5, "sentiment": 0.72},  # Day 3
-            {"btc": 0.005, "sectors": 0.018, "flows": 85.0, "sentiment": 0.68},   # Day 4
-            {"btc": -0.015, "sectors": -0.045, "flows": -150.2, "sentiment": 0.42},# Day 5
-            {"btc": 0.032, "sectors": 0.081, "flows": 310.4, "sentiment": 0.81},  # Day 6
-            {"btc": 0.018, "sectors": 0.042, "flows": 145.0, "sentiment": 0.78}   # Day 7 (Today)
-        ]
-        
-        today = datetime.utcnow()
-        
-        for idx in range(days):
-            day_data = daily_volatility_seeds[idx % len(daily_volatility_seeds)]
-            date_str = (today - timedelta(days=(days - 1 - idx))).strftime("%b %d")
+        p = win_probability
+        if p <= 0:
+            return 0.0
+        if p > 1.0:
+            p = p / 100.0  # support percentage representations (e.g., 78 instead of 0.78)
             
-            # Pure BTC daily returns
-            btc_ret = day_data["btc"]
+        q = 1.0 - p
+        b = win_loss_ratio
+        
+        if b <= 0:
+            return 0.0
             
-            # Neural Vault return calculation:
-            # Dynamic weights determine the gain/loss factor:
-            # High sentiment & high inflows triggers active sector index allocation, capture high beta.
-            # Low flow & high downside triggers stable allocation, protecting downside.
-            if day_data["sentiment"] > 0.70 and day_data["flows"] > 100.0:
-                # Active risk regime: outperforming BTC during expansion
-                vault_ret = btc_ret * 0.4 + day_data["sectors"] * 0.6
-            elif day_data["flows"] < 0:
-                # Retrenched risk regime: stables protect downside of BTC drops
-                vault_ret = min(0.001, btc_ret * 0.2) # minor gain/loss on stables/shrunk risk
-            else:
-                # Neutral regime
-                vault_ret = btc_ret * 0.6 + day_data["sectors"] * 0.4
+        # Standard Kelly Formula: f = (bp - q) / b
+        kelly_f = (b * p - q) / b
+        
+        # Apply Half-Kelly as conservative sizing guardrail
+        half_kelly = kelly_f / 2.0
+        
+        # Clamp between 0.0 (no allocation) and 1.0 (100% allocation limit)
+        optimized_size = max(0.0, min(half_kelly, 1.0))
+        return round(optimized_size * 100, 2)  # Return as readable percentage
+
+    def evaluate_market_rules(self, market_state: Dict[str, Any], initial_proposal: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
+        """
+        Applies strict hardcoded mathematical filters to any quantitative/AI proposal.
+        To avoid LLM overconfidence, these rules can VETO or override decisions deterministically.
+        """
+        override_logs = []
+        modified_proposal = dict(initial_proposal)
+        
+        # Extract variables from state with robust defaults
+        # 1. ETF Net Flows (Institutional Inflows)
+        etf_flows_detailed = market_state.get("etf_flows_detailed", {})
+        net_inflow_today = etf_flows_detailed.get("net_inflow_today", 0.0)
+        
+        # If detailed etf isn't present, check list level
+        if not net_inflow_today and "etf_net_flows" in market_state:
+            # If formatted as a list of daily floats, check the latest period
+            flows = market_state["etf_net_flows"]
+            if flows and isinstance(flows, list):
+                # If floats are represented in millions (e.g. 152.4), convert to absolute
+                net_inflow_today = flows[-1] * 1000000.0 if abs(flows[-1]) < 100000.0 else flows[-1]
+
+        # 2. Funding Rates
+        funding_rate = market_state.get("funding_rates", 0.0)
+        
+        # 3. AI Sentiment Score
+        sentiment_score = market_state.get("sentiment_score", 0.5)
+        
+        # 4. Sector Index Performance
+        sector_perf = market_state.get("sector_performance_map", {})
+        if not sector_perf and "sectors" in market_state:
+            sector_perf = market_state["sectors"]
+            
+        # Determine average index performance
+        avg_sector_perf = 0.0
+        if sector_perf:
+            avg_sector_perf = sum(sector_perf.values()) / len(sector_perf)
+        
+        # --- Rule 1 (Liquidity Limit) ---
+        # If institutional capital is fleeing (ETF net outflow < -$100M), force a VETO.
+        # Reduce risk exposure completely and allocate 50% to Stablecoins immediately.
+        if net_inflow_today < self.etf_outflow_threshold:
+            override_logs.append("RULE_VETO: Heavy ETF outflow < -$100M detected (Liquidity Breach). Forcing allocation of 50% stables.")
+            modified_proposal["action"] = "VETO"
+            
+            # Recalculate target weights
+            target_weights = modified_proposal.get("target_weights", {})
+            if target_weights:
+                # Force allocation of 50% stablecoins
+                remaining_weight = 0.50
+                original_total_non_stables = sum(
+                    w for asset, w in target_weights.items() if asset not in ["STABLES", "USDC"]
+                ) or 1.0
                 
-            # Apply dynamic alpha boost based on the live API sentiment index
-            # If sentiment is high (e.g. >0.5), we widen the alpha gap, else narrow/lower it.
-            alpha_boost = (sentiment_score - 0.5) * 0.015
-            vault_ret += alpha_boost
-            
-            # Compound the returns
-            vault_cumulative = (1.0 + vault_cumulative) * (1.0 + vault_ret) - 1.0
-            btc_cumulative = (1.0 + btc_cumulative) * (1.0 + btc_ret) - 1.0
-            
-            backtest_timeline.append({
-                "day": idx + 1,
-                "date": date_str,
-                "vault_return": round(vault_cumulative * 100, 2), # % return
-                "btc_return": round(btc_cumulative * 100, 2),     # % return
-                "net_etf_flow": day_data["flows"],
-                "sentiment_index": round(day_data["sentiment"] * 100, 1)
-            })
-            
-        return backtest_timeline
+                new_weights = {}
+                for asset, w in target_weights.items():
+                    if asset in ["STABLES", "USDC"]:
+                        new_weights[asset] = 0.50
+                    else:
+                        new_weights[asset] = round((w / original_total_non_stables) * remaining_weight, 4)
+                modified_proposal["target_weights"] = new_weights
+            else:
+                modified_proposal["target_weights"] = {
+                    "BTC": 0.20,
+                    "ETH": 0.15,
+                    "SOL": 0.15,
+                    "STABLES": 0.50
+                }
 
-    def get_historical_benchmark(self, days: int = 7, sentiment_score: float = 0.5):
-        """
-        Returns a pandas DataFrame suitable for st.line_chart, 
-        representing cumulative returns over time.
-        """
-        import pandas as pd
-        timeline = self.run_simulated_backtest(days, sentiment_score)
-        
-        records = []
-        for item in timeline:
-            records.append({
-                "Date": item["date"],
-                "BTC Benchmark": item["btc_return"],
-                "Neural Vault": item["vault_return"]
-            })
+        # --- Rule 2 (Leverage Limit) ---
+        # If average funding rates exceed 0.05%, leverage or retail positioning is over-extended.
+        # This blocks all execution or rebalancing parameters completely.
+        if funding_rate > self.funding_rate_limit:
+            override_logs.append(f"RULE_BLOCKED: Funding Rate is excessively high ({funding_rate}% > {self.funding_rate_limit}%). Blocking new rebalance execution.")
+            modified_proposal["action"] = "HOLD"
+            modified_proposal["rebalance_blocked"] = True
+
+        # --- Rule 3 (Divergence Limit) ---
+        # "Hype-Exit Divergence"
+        # If sentiment score is high (> 80%) but overall sector indices are performing negatively,
+        # it is a narrative trap. Reduce target positioning size by 70%.
+        if sentiment_score > self.sentiment_hype_bound and avg_sector_perf < 0.0:
+            override_logs.append("RULE_OVERRIDE: Sentiment >80% but Sector Performance is in negative distribution. Flagging 'Hype-Exit Divergence'. Reducing suggested size/weight alterations by 70%.")
+            modified_proposal["divergence_detected"] = True
+            modified_proposal["hype_exit_divergence"] = True
             
-        return pd.DataFrame(records)
+            target_weights = modified_proposal.get("target_weights", {})
+            if target_weights:
+                # Adjust risk size down (reallocate the difference to stables/safe assets)
+                stables_key = "STABLES" if "STABLES" in target_weights else "USDC"
+                original_stables = target_weights.get(stables_key, 0.0)
+                
+                adjusted_weights = {}
+                accumulated_risk_retrenched = 0.0
+                for asset, weight in target_weights.items():
+                    if asset == stables_key:
+                        continue
+                    # Keep 30% of the risk weight adjustment (70% retrenchment), shift the difference to stables
+                    retained_weight = round(weight * 0.30, 4)
+                    accumulated_risk_retrenched += (weight - retained_weight)
+                    adjusted_weights[asset] = retained_weight
+                
+                adjusted_weights[stables_key] = round(original_stables + accumulated_risk_retrenched, 4)
+                modified_proposal["target_weights"] = adjusted_weights
+
+        return modified_proposal, override_logs
+
+if __name__ == "__main__":
+    # Quantitative Test Execution
+    print("=== Testing Quantitative Hardcoded Risk Engine ===")
+    engine = RiskEngine()
+    
+    # Kelly Position Sizing test
+    win_p = 0.68  # 68% confidence
+    risk_r = 1.5  # Risk/Reward
+    kelly = engine.calculate_kelly_size(win_p, risk_r)
+    print(f"Kelly Optimized Sizing (Half-Kelly) for {win_p*100}% probability: {kelly}%")
+    
+    # Test Data Inflow
+    mock_market = {
+        "sentiment_score": 0.85,
+        "sectors": {"AI": -2.3, "L2": -1.4, "DePIN": -3.1}, 
+        "etf_flows_detailed": {"net_inflow_today": -120000000.0},
+        "funding_rates": 0.06
+    }
+    
+    initial_trade = {
+        "action": "REBALANCE",
+        "target_weights": {"BTC": 0.50, "ETH": 0.30, "SOL": 0.20, "STABLES": 0.0}
+    }
+    
+    output, overrides = engine.evaluate_market_rules(mock_market, initial_trade)
+    print("Overrun Logs generated:")
+    for log in overrides:
+        print(f" - {log}")
+    print(f"Final Weights: {output.get('target_weights')}")
+    print(f"Action Outcome: {output.get('action')}")
+    print("==================================================")

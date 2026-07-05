@@ -1,43 +1,7 @@
+import { GoogleGenAI, Type } from "@google/genai";
 import { SoSoVaultAnalysis, MarketSentiment, SectorMetric, MacroFlows, PortfolioState } from "../types";
 
-// NOTE: The @google/genai SDK is intentionally NOT imported here. Any real
-// Gemini calls happen server-side (in the Python API routes) — instantiating
-// the SDK in frontend code pulls it into the browser bundle for no reason
-// (it was never actually invoked from this file) and was the source of a
-// "Gemini SDK running in the browser" console warning.
-
-// Every API route in this app is expected to return JSON. If Vercel's
-// rewrite/routing ever misses a route (e.g. a serverless function fails to
-// build, or a request falls through to the SPA catch-all), the response
-// comes back as `text/html` — the app's own index.html — with a 200 status.
-// `response.ok` is true in that case, so the old code would proceed straight
-// to `response.json()` and crash with "Unexpected token < in JSON" the
-// moment React tried to render on top of a rejected promise that wasn't
-// caught tightly enough. This helper reads the body as text first and
-// treats anything that looks like an HTML document as a soft failure, so
-// every caller can fall back to its mock/default data exactly the same way
-// it already does for a network error.
-export async function safeFetchJson(input: RequestInfo, init?: RequestInit): Promise<any> {
-  const response = await fetch(input, init);
-  const raw = await response.text();
-
-  const looksLikeHtml = raw.trimStart().slice(0, 15).toLowerCase().startsWith("<!doctype") ||
-    raw.trimStart().slice(0, 5).toLowerCase().startsWith("<html");
-
-  if (!response.ok || looksLikeHtml) {
-    throw new Error(
-      looksLikeHtml
-        ? `Expected JSON from ${typeof input === "string" ? input : "request"} but received an HTML page (likely a routing/404 fallback).`
-        : `Request to ${typeof input === "string" ? input : "endpoint"} failed with status ${response.status}`
-    );
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch (err) {
-    throw new Error(`Response from ${typeof input === "string" ? input : "endpoint"} was not valid JSON.`);
-  }
-}
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 const defaultVaultAnalysis: SoSoVaultAnalysis = {
   analysis: {
@@ -121,13 +85,20 @@ export const getSoSoVaultAnalysis = async (
   portfolio: PortfolioState
 ): Promise<SoSoVaultAnalysis> => {
   try {
-    return await safeFetchJson("/api/analyze", {
+    const response = await fetch("/api/analyze", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ sentiment, sectors, macro, portfolio }),
-    }) as SoSoVaultAnalysis;
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch analysis from intelligence layer");
+    }
+
+    const result = await response.json();
+    return result as SoSoVaultAnalysis;
   } catch (error) {
     console.error("AI Analysis Error:", error);
     return defaultVaultAnalysis;
@@ -175,7 +146,9 @@ export const generateMockData = async () => {
 
 export const getPythonAlphaData = async (): Promise<any> => {
   try {
-    return await safeFetchJson("/api/intelligence");
+    const response = await fetch("/api/intelligence");
+    if (!response.ok) throw new Error("Python backend offline");
+    return await response.json();
   } catch (error) {
     console.error("Failed to fetch Python Alpha Data:", error);
     return defaultWinningData;
@@ -184,7 +157,9 @@ export const getPythonAlphaData = async (): Promise<any> => {
 
 export const getLiveMarketData = async (): Promise<any> => {
   try {
-    return await safeFetchJson("/api/market-data");
+    const response = await fetch("/api/market-data");
+    if (!response.ok) throw new Error("Backend offline");
+    return await response.json();
   } catch (error) {
     console.error("Failed to fetch live market data:", error);
     return defaultWinningData;
@@ -197,13 +172,20 @@ export const executeRebalance = async (
   portfolio: PortfolioState
 ): Promise<any> => {
   try {
-    return await safeFetchJson("/api/rebalance", {
+    const response = await fetch("/api/rebalance", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ action, target_weights: targetWeights, portfolio }),
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Execution engine fault");
+    }
+
+    return await response.json();
   } catch (error) {
     console.error("Execution Error:", error);
     return { status: "success", fallback: true };
@@ -212,7 +194,9 @@ export const executeRebalance = async (
 
 export const toggleBlackSwan = async (): Promise<any> => {
   try {
-    return await safeFetchJson("/api/toggle-black-swan", { method: 'POST' });
+    const response = await fetch("/api/toggle-black-swan", { method: 'POST' });
+    if (!response.ok) throw new Error("Backend offline");
+    return await response.json();
   } catch (error) {
     console.error("Failed to toggle black swan:", error);
     return { status: "success", black_swan: true };
@@ -221,7 +205,9 @@ export const toggleBlackSwan = async (): Promise<any> => {
 
 export const getFundManagerState = async (): Promise<any> => {
   try {
-    return await safeFetchJson("/api/fund-manager");
+    const response = await fetch("/api/fund-manager");
+    if (!response.ok) throw new Error("Backend offline");
+    return await response.json();
   } catch (error) {
     console.error("Failed to fetch fund manager state:", error);
     return { totalAUM: 18659275.00, dailyRevenue: 1021.92, vaults: [] };
@@ -230,7 +216,9 @@ export const getFundManagerState = async (): Promise<any> => {
 
 export const getSimulationHistory = async (): Promise<any[]> => {
   try {
-    return await safeFetchJson("/api/time-machine");
+    const response = await fetch("/api/time-machine");
+    if (!response.ok) throw new Error("Backend offline");
+    return await response.json();
   } catch (error) {
     console.error("Failed to fetch simulation history:", error);
     return [];
@@ -239,7 +227,9 @@ export const getSimulationHistory = async (): Promise<any[]> => {
 
 export const getExecutionLedger = async (): Promise<any[]> => {
   try {
-    return await safeFetchJson("/api/ledger");
+    const response = await fetch("/api/ledger");
+    if (!response.ok) throw new Error("Backend offline");
+    return await response.json();
   } catch (error) {
     console.error("Failed to fetch execution ledger:", error);
     return [];
@@ -248,7 +238,9 @@ export const getExecutionLedger = async (): Promise<any[]> => {
 
 export const getHostBacktestTimeline = async (): Promise<any[]> => {
   try {
-    const json = await safeFetchJson("/api/backtest");
+    const response = await fetch("/api/backtest");
+    if (!response.ok) throw new Error("Backend offline");
+    const json = await response.json();
     return Array.isArray(json) ? json : json.backtest_data || defaultWinningData.backtest_data;
   } catch (error) {
     console.error("Failed to fetch backtest timeline:", error);
