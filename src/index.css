@@ -89,3 +89,21 @@
   animation: card-scan 3s linear infinite;
 }
 
+/* Ambient idle pulse — a slow, subtle breathing glow on the card border so the
+   cards feel alive even when no one is hovering. Each card gets its own
+   animation-delay so they don't all breathe in unison. */
+@keyframes card-ambient-pulse {
+  0%, 100% {
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+  }
+  50% {
+    border-color: rgba(16, 185, 129, 0.25);
+    box-shadow: 0 0 24px rgba(16, 185, 129, 0.08);
+  }
+}
+
+.animate-card-ambient {
+  animation: card-ambient-pulse 5s ease-in-out infinite;
+}
+

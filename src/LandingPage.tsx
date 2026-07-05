@@ -183,7 +183,8 @@ export function LandingPage({ onLaunch, onGuestMode }: LandingPageProps) {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.35 + i * 0.1 }}
-                className="relative overflow-hidden p-6 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-xl hover:border-emerald-500/30 transition-colors"
+                className="relative overflow-hidden p-6 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-xl animate-card-ambient hover:[animation-play-state:paused] hover:border-emerald-500/30 hover:shadow-[0_0_24px_rgba(16,185,129,0.12)] transition-colors"
+                style={{ animationDelay: `${i * 1.2}s` }}
               >
                 {/* Occasional scan line, staggered per card so they don't all fire in sync */}
                 <div
