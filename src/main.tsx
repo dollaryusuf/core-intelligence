@@ -1,5 +1,19 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:ital,wght@1,900&display=swap');
-@import "tailwindcss";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+const rootElement = document.getElementById('root');
+
+if (!rootElement) {
+  throw new Error('Failed to find the root element');
+}
+
+ReactDOM.createRoot(rootElement).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
