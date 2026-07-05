@@ -1,63 +1,104 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * RECONSTRUCTED FILE — your real types.ts was not among the uploads (the
+ * file uploaded under that name actually contained the main.tsx entry
+ * point, see main.tsx). These shapes are inferred from how AuditTrail.tsx,
+ * AgentLogger.tsx, and aiService.ts consume them. Please diff this against
+ * your original if you still have it — in particular double-check
+ * ManagedVault's fields, since only `vault.id` and `vault.name` are
+ * actually referenced by the components I could see.
  */
-import {StrictMode, Component, type ReactNode} from 'react';
-import {createRoot} from 'react-dom/client';
-import {WagmiProvider} from 'wagmi';
-import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
-import App from './App.tsx';
-import {wagmiConfig} from './lib/wagmiConfig';
-import './index.css';
 
-const queryClient = new QueryClient();
-
-// Catches any render-time crash in App (or below) and surfaces it instead of
-// leaving a permanently blank / stuck screen with no signal in the console.
-class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; message?: string }> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, message: error.message };
-  }
-  componentDidCatch(error: Error, info: { componentStack: string }) {
-    // eslint-disable-next-line no-console
-    console.error('App Render Error:', error, info.componentStack);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen bg-black grid place-items-center font-mono text-red-400 text-sm px-6 text-center">
-          <div>
-            <p className="uppercase tracking-widest mb-2">System Fault</p>
-            <p className="text-white/60 text-xs">{this.state.message || 'Unknown render error. Check the browser console for details.'}</p>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
+export interface LogEntry {
+  id: string;
+  timestamp: string;
+  type: 'info' | 'alert' | 'process' | 'default';
+  message: string;
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    {/*
-      reconnectOnMount is explicitly OFF: with it on (the default), wagmi
-      silently restores a previously-connected wallet from localStorage on
-      page load, which flips `isConnected` to true before the user ever sees
-      the LandingPage — skipping the gateway entirely and, combined with the
-      old `data`-gated render, leaving a bare "Initializing..." screen with
-      nothing mounted on top of it. Revisit re-enabling this once the
-      gateway flow no longer depends on wallet state to decide what to render.
-    */}
-    <WagmiProvider config={wagmiConfig} reconnectOnMount={false}>
-      <QueryClientProvider client={queryClient}>
-        <AppErrorBoundary>
-          <App />
-        </AppErrorBoundary>
-      </QueryClientProvider>
-    </WagmiProvider>
-  </StrictMode>,
-);
+export type AuditAction =
+  | 'REBALANCE'
+  | 'VETO'
+  | 'CIRCUIT BREAKER'
+  | 'GOVERNANCE'
+  | 'HOLD'
+  | 'NODE_SYNCHRONIZED';
+
+export interface AuditEvent {
+  id: string;
+  timestamp: string;
+  action: AuditAction;
+  signal: string;
+  verdict: string;
+  payload?: Record<string, unknown>;
+  insights?: string[];
+}
+
+export interface ManagedVault {
+  id: string | number;
+  name: string;
+  aum?: number;
+  type?: string;
+  mandate?: string;
+  ownerAddress?: string;
+}
+
+export interface MarketSentiment {
+  score: number;
+  velocity: 'improving' | 'decaying';
+  topNarratives: string[];
+  newsMood: string;
+}
+
+export interface SectorMetric {
+  name: string;
+  performanceVsBtc: number;
+  sentiment: number;
+}
+
+export interface MacroFlows {
+  etfInflows: number[];
+  fundingRate: number;
+  institutionalSignal: string;
+}
+
+export interface PortfolioHolding {
+  asset: string;
+  amount: number;
+  weight: number;
+}
+
+export interface PortfolioState {
+  totalValue: number;
+  holdings: PortfolioHolding[];
+  pnl24h: number;
+}
+
+export interface SoSoVaultAnalysis {
+  analysis: {
+    market_regime: string;
+    primary_signal: string;
+    sentiment_analysis: string;
+    chain_of_thought: {
+      macro_check: string;
+      sector_check: string;
+      sentiment_velocity: string;
+      global_risk_score: number;
+    };
+    sentiment_score: number;
+  };
+  risk_engine: {
+    risk_score: number;
+    risk_level: string;
+    circuit_breaker_active: boolean;
+  };
+  allocation_plan: {
+    action: string;
+    target_weights: Record<string, number>;
+    trade_instructions: string;
+    trade_rationale: string;
+  };
+  reasoning_narrative: string;
+}

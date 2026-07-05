@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:ital,wght@1,900&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -63,3 +64,4 @@
 .glow-amber {
   box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
 }
+
