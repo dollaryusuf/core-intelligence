@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import tempfile
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
 
@@ -10,8 +11,13 @@ class PerformanceManager:
     Computes historical backtest charts (Neural Vault vs. BTC benchmark)
     and maintains a persistent ledger of all execution trades.
     """
-    def __init__(self, ledger_file: str = "ledger.json"):
-        self.ledger_file = ledger_file
+    def __init__(self, ledger_file: str = None):
+        # Same reasoning as ExecutionEngine: Vercel's deployment bundle is
+        # read-only, so a relative path here would silently fail every
+        # single write (caught by the try/except below, but the ledger
+        # would never actually persist anything). /tmp is writable, even
+        # though it's wiped between cold starts — fine for a demo ledger.
+        self.ledger_file = ledger_file or os.path.join(tempfile.gettempdir(), "ledger.json")
         self._init_ledger()
 
     def _init_ledger(self):

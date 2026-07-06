@@ -1,22 +1,33 @@
 import csv
 import os
 import time
+import tempfile
 from datetime import datetime
 from typing import Dict, Any, List
 
 class ExecutionEngine:
-    def __init__(self, log_file: str = "trades.csv"):
-        self.log_file = log_file
+    def __init__(self, log_file: str = None):
+        # Vercel's serverless filesystem is read-only except for /tmp, and
+        # even /tmp is ephemeral (wiped between cold starts) — this is a
+        # demo trade log, not a durable store, so that's an acceptable
+        # trade-off. Defaults to /tmp so this never tries to write into the
+        # read-only deployment bundle itself.
+        self.log_file = log_file or os.path.join(tempfile.gettempdir(), "trades.csv")
         self.slippage_limit = 0.02 # 2%
         self.max_drawdown_limit = 0.10 # 10%
         self._init_log()
 
     def _init_log(self):
-        """Initializes the CSV log file with headers if it doesn't exist."""
-        if not os.path.exists(self.log_file):
-            with open(self.log_file, mode='w', newline='') as f:
-                writer = csv.writer(f)
-                writer.writerow(["timestamp", "asset", "action", "amount", "price", "slippage", "pnl_impact"])
+        """Initializes the CSV log file with headers if it doesn't exist.
+        Never raises — a logging failure should never take down the whole
+        app, same defensive pattern as PerformanceManager's ledger writes."""
+        try:
+            if not os.path.exists(self.log_file):
+                with open(self.log_file, mode='w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(["timestamp", "asset", "action", "amount", "price", "slippage", "pnl_impact"])
+        except OSError as e:
+            print(f"[ExecutionEngine] Could not initialize trade log at {self.log_file} (non-fatal): {e}")
 
     def validate_trade(self, trade_request: Dict[str, Any], current_market: Dict[str, Any]) -> bool:
         """
@@ -77,18 +88,22 @@ class ExecutionEngine:
             return {"status": "failed", "error": str(e)}
 
     def _log_trade(self, trade_data: Dict[str, Any]):
-        """Logs trade to trades.csv for PnL tracking."""
-        with open(self.log_file, mode='a', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow([
-                trade_data["timestamp"],
-                trade_data["asset"],
-                trade_data["action"],
-                trade_data["amount"],
-                trade_data["price"],
-                trade_data["slippage"],
-                trade_data["pnl_impact"]
-            ])
+        """Logs trade to trades.csv for PnL tracking. Never raises — a
+        logging failure should never break trade execution itself."""
+        try:
+            with open(self.log_file, mode='a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    trade_data["timestamp"],
+                    trade_data["asset"],
+                    trade_data["action"],
+                    trade_data["amount"],
+                    trade_data["price"],
+                    trade_data["slippage"],
+                    trade_data["pnl_impact"]
+                ])
+        except OSError as e:
+            print(f"[ExecutionEngine] Could not write trade log at {self.log_file} (non-fatal): {e}")
 
 if __name__ == "__main__":
     engine = ExecutionEngine()
