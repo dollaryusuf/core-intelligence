@@ -70,7 +70,8 @@ import {
   getExecutionLedger,
   getHostBacktestTimeline,
   getPythonAlphaData,
-  safeFetchJson
+  safeFetchJson,
+  TickerPayload
 } from './lib/aiService';
 import { 
   SoSoVaultAnalysis, 
@@ -201,6 +202,9 @@ export default function App() {
   const [isAuditOpen, setIsAuditOpen] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [activeSignalAttribution, setActiveSignalAttribution] = useState<{ title: string; description: string }[] | null>(null);
+  // Raw JSON payload + soso-api-request-id from the last MarketTicker fetch,
+  // surfaced in the Evidence Vault panel so judges can verify the live feed.
+  const [tickerEvidence, setTickerEvidence] = useState<TickerPayload | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationDay, setSimulationDay] = useState(0);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -884,7 +888,7 @@ VERIFIED VIA ZK-PROOF ATTESTATION
     <>
       <div className="min-h-screen w-full max-w-full overflow-x-hidden grid-bg">
       {/* Live Market Ticker */}
-      <MarketTicker intelligence={intelligence} />
+      <MarketTicker intelligence={intelligence} onEvidence={setTickerEvidence} />
 
       {/* Header */}
       <header className="border-b border-white/10 bg-bg/80 backdrop-blur-md sticky top-0 z-50">
@@ -2438,6 +2442,22 @@ VERIFIED VIA ZK-PROOF ATTESTATION
               </div>
 
               <div className="flex-1 overflow-y-auto p-8 space-y-6">
+                {tickerEvidence && (
+                  <div className="p-5 bg-white/[0.03] border border-white/5 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h6 className="text-[10px] font-bold uppercase text-accent font-mono flex items-center gap-2">
+                        Live Ticker Feed &middot; Raw Payload
+                      </h6>
+                      <span className="text-[9px] font-mono text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">
+                        {tickerEvidence.cache_hit ? `cached ${tickerEvidence.cache_age_seconds}s` : 'fresh fetch'}
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-mono text-gray-400">
+                      soso-api-request-id: <span className="text-white">{tickerEvidence.request_id ?? 'n/a (fallback payload)'}</span>
+                    </div>
+                    <JsonView data={tickerEvidence} />
+                  </div>
+                )}
                 <div className="space-y-4">
                   {intelligence?.headlines ? (
                     intelligence.headlines.map((news: any, idx: number) => (

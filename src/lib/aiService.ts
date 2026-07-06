@@ -256,3 +256,50 @@ export const getHostBacktestTimeline = async (): Promise<any[]> => {
   }
 };
 
+export interface TickerItem {
+  label: string;
+  price: number;
+  change24h: number;
+  sparkline: number[];
+  source: 'LIVE_API' | 'SIMULATED';
+  source_detail?: string;
+}
+
+export interface TickerPayload {
+  items: TickerItem[];
+  request_id: string | null;
+  timestamp: number;
+  cache_hit?: boolean;
+  cache_age_seconds?: number;
+}
+
+const FALLBACK_TICKER_PAYLOAD: TickerPayload = {
+  items: [
+    { label: 'BTC', price: 64500.0, change24h: 1.2, sparkline: [64100, 64250, 64180, 64400, 64350, 64480, 64500], source: 'SIMULATED' },
+    { label: 'ETH', price: 3480.0, change24h: 0.8, sparkline: [3440, 3455, 3460, 3470, 3465, 3478, 3480], source: 'SIMULATED' },
+    { label: 'SOL', price: 155.0, change24h: -0.4, sparkline: [156, 155.5, 155.8, 155.2, 154.9, 155.1, 155.0], source: 'SIMULATED' },
+    { label: 'SOSO_SENTIMENT', price: 72.0, change24h: 2.1, sparkline: [69, 70, 71, 70.5, 71.2, 71.8, 72.0], source: 'SIMULATED' },
+  ],
+  request_id: null,
+  timestamp: Date.now() / 1000,
+};
+
+/**
+ * Live ticker feed for MarketTicker.tsx — BTC/ETH/SOL price + 24h change +
+ * a 7-point sparkline, plus a SOSO_SENTIMENT index. Falls back to a clearly
+ * `SIMULATED`-labeled payload (never silently blended with live data) if
+ * the backend is unreachable or returns something unexpected.
+ */
+export const fetchLiveTickerData = async (): Promise<TickerPayload> => {
+  try {
+    const payload = await safeFetchJson("/api/market-ticker");
+    if (!payload || !Array.isArray(payload.items) || payload.items.length === 0) {
+      throw new Error("Ticker payload was empty or malformed.");
+    }
+    return payload as TickerPayload;
+  } catch (error) {
+    console.error("Failed to fetch live ticker data:", error);
+    return FALLBACK_TICKER_PAYLOAD;
+  }
+};
+

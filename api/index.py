@@ -68,6 +68,34 @@ def _safe_json(fn, fallback):
         return jsonify(body)
 
 
+# Server-side cache for the ticker so concurrent judges viewing the site
+# don't each trigger a fresh SoSoValue/Binance round-trip — one fetch per
+# 60s window is shared across all requests to this serverless instance.
+_ticker_cache = {"data": None, "fetched_at": 0.0}
+TICKER_CACHE_TTL_SECONDS = 60
+
+
+@app.route("/api/market-ticker", methods=["GET"])
+def market_ticker():
+    def run():
+        now = time.time()
+        is_fresh = _ticker_cache["data"] is not None and (now - _ticker_cache["fetched_at"]) < TICKER_CACHE_TTL_SECONDS
+        if is_fresh:
+            cached = dict(_ticker_cache["data"])
+            cached["cache_hit"] = True
+            cached["cache_age_seconds"] = round(now - _ticker_cache["fetched_at"], 1)
+            return cached
+
+        data = soso_service.get_live_market_data()
+        data["cache_hit"] = False
+        data["cache_age_seconds"] = 0
+        _ticker_cache["data"] = data
+        _ticker_cache["fetched_at"] = now
+        return data
+
+    return _safe_json(run, lambda: {"items": [], "request_id": None, "error": "ticker unavailable"})
+
+
 @app.route("/api/market-data", methods=["GET"])
 def market_data():
     def run():
