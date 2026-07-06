@@ -107,3 +107,34 @@
   animation: card-ambient-pulse 5s ease-in-out infinite;
 }
 
+/* Neural pulse border — a soft emerald glow that travels left-to-right
+   along the header's bottom edge once every 5 seconds, then resets. */
+@keyframes neural-pulse-travel {
+  0% { transform: translateX(-120%); opacity: 0; }
+  8% { opacity: 1; }
+  50% { opacity: 1; }
+  92% { opacity: 0; }
+  100% { transform: translateX(320%); opacity: 0; }
+}
+
+.animate-neural-pulse {
+  animation: neural-pulse-travel 5s ease-in-out infinite;
+}
+
+/* Title breathing glow — subtle opacity pulse so "SoSo-Vault" reads as
+   alive rather than static, without being distracting. */
+@keyframes title-glow-breathe {
+  0%, 100% { opacity: 0.85; text-shadow: 0 0 0 rgba(16, 185, 129, 0); }
+  50% { opacity: 1; text-shadow: 0 0 12px rgba(16, 185, 129, 0.35); }
+}
+
+.animate-title-glow {
+  animation: title-glow-breathe 4s ease-in-out infinite;
+}
+
+/* Fades the ticker strip's edges to transparent so scrolling items don't
+   look like they're clipping abruptly against the pill's rounded ends. */
+.mask-fade-x {
+  -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}

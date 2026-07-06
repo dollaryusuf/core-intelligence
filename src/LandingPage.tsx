@@ -2,6 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
+import { useRef } from 'react';
 import { motion } from 'motion/react';
 import {
   ChevronRight,
@@ -9,9 +10,9 @@ import {
   ArrowUpRight,
   Radio,
   ShieldCheck,
-  Cpu,
 } from 'lucide-react';
 import { CONTRACT_ADDRESS, AUTHORIZED_AUDITOR, SEPOLIA_CHAIN_ID } from './lib/contract';
+import { FloatingHeader } from './FloatingHeader';
 
 interface LandingPageProps {
   /** Fired when "Launch Terminal" is clicked — parent should mount the ConnectionGate next. */
@@ -51,9 +52,12 @@ const MODULES = [
 ];
 
 export function LandingPage({ onLaunch, onGuestMode }: LandingPageProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   return (
     <motion.div
       key="landing-page"
+      ref={scrollRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ y: -60, opacity: 0 }}
@@ -69,26 +73,12 @@ export function LandingPage({ onLaunch, onGuestMode }: LandingPageProps) {
       {/* Scanner sweep — reinforces the "live financial system" feel */}
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/60 to-transparent animate-scanner pointer-events-none" />
 
-      <div className="relative z-10 min-h-full flex flex-col">
-        {/* Header — system breadcrumb, not a logo lockup */}
-        <div className="max-w-6xl w-full mx-auto px-6 pt-8 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400 tracking-wide">
-            <span className="text-emerald-500/80 border border-emerald-500/20 bg-emerald-500/5 px-1.5 py-0.5 rounded">
-              TERMINAL
-            </span>
-            <span className="text-slate-700">/</span>
-            <span className="text-slate-300">SO-SO</span>
-            <span className="text-slate-700">/</span>
-            <span className="text-slate-500">CORE_INTEL</span>
-          </div>
-          <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-slate-600">
-            <Cpu size={12} className="text-slate-600" />
-            NODE::SEPOLIA-01
-          </div>
-        </div>
+      <FloatingHeader scrollContainerRef={scrollRef} />
 
-        {/* Hero — vertically centered, px-6 so nothing touches the screen edge on mobile */}
-        <div className="max-w-4xl w-full mx-auto px-6 pt-16 pb-14 text-center flex-1 flex flex-col items-center justify-center">
+      <div className="relative z-10 min-h-full flex flex-col">
+        {/* Hero — vertically centered. pt-32 clears the floating header
+            (which replaced the old inline breadcrumb bar above). */}
+        <div className="max-w-4xl w-full mx-auto px-6 pt-32 pb-14 text-center flex-1 flex flex-col items-center justify-center">
           {/* Status badges */}
           <motion.div
             initial={{ opacity: 0, y: -8 }}
