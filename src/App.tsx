@@ -866,6 +866,7 @@ VERIFIED VIA ZK-PROOF ATTESTATION
               setIsGuestMode(true);
               setShowGateway(false);
             }}
+            onEvidence={setTickerEvidence}
           />
         )}
       </AnimatePresence>

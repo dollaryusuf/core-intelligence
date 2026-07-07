@@ -12,13 +12,19 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { CONTRACT_ADDRESS, AUTHORIZED_AUDITOR, SEPOLIA_CHAIN_ID } from './lib/contract';
-import { FloatingHeader } from './FloatingHeader';
+import { FloatingHeader, TickerItem as HeaderTickerItem } from './FloatingHeader';
+import { useLiveTicker } from './useLiveTicker';
+import { TickerPayload } from './lib/aiService';
 
 interface LandingPageProps {
   /** Fired when "Launch Terminal" is clicked — parent should mount the ConnectionGate next. */
   onLaunch: () => void;
   /** Fired when "Enter as Guest" is clicked — skips the wallet handshake entirely, straight to View-Only dashboard. */
   onGuestMode: () => void;
+  /** Fired every time a fresh ticker payload is fetched, so App.tsx can
+   * stash it in the Evidence Vault — same wiring as the Dashboard's
+   * MarketTicker, so evidence syncs regardless of which screen fetched it. */
+  onEvidence?: (payload: TickerPayload) => void;
 }
 
 const TELEMETRY = [
@@ -51,8 +57,23 @@ const MODULES = [
   },
 ];
 
-export function LandingPage({ onLaunch, onGuestMode }: LandingPageProps) {
+export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPageProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { items } = useLiveTicker(onEvidence);
+
+  // Map our TickerItem[] (label/price/change24h) into FloatingHeader's
+  // display format (label/value/positive). Falls back to FloatingHeader's
+  // own DEFAULT_TICKER (via `undefined`) until the first live poll resolves,
+  // rather than flashing an empty bar.
+  const headerTickerItems: HeaderTickerItem[] | undefined = items.length > 0
+    ? items.map((item) => ({
+        label: item.label === 'SOSO_SENTIMENT' ? 'SENTIMENT' : `${item.label}/USD`,
+        value: item.label === 'SOSO_SENTIMENT'
+          ? `${item.price.toFixed(0)}% ${item.change24h >= 0 ? 'BULLISH' : 'BEARISH'}`
+          : `$${item.price.toLocaleString(undefined, { maximumFractionDigits: item.price < 10 ? 2 : 0 })}`,
+        positive: item.change24h >= 0,
+      }))
+    : undefined;
 
   return (
     <motion.div
@@ -73,7 +94,7 @@ export function LandingPage({ onLaunch, onGuestMode }: LandingPageProps) {
       {/* Scanner sweep — reinforces the "live financial system" feel */}
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/60 to-transparent animate-scanner pointer-events-none" />
 
-      <FloatingHeader scrollContainerRef={scrollRef} />
+      <FloatingHeader scrollContainerRef={scrollRef} tickerItems={headerTickerItems} />
 
       <div className="relative z-10 min-h-full flex flex-col">
         {/* Hero — vertically centered. pt-32 clears the floating header

@@ -2,13 +2,16 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import { useEffect, useRef, useState } from 'react';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { cn } from './lib/utils';
-import { fetchLiveTickerData, TickerItem, TickerPayload } from './lib/aiService';
+import { TickerItem, TickerPayload } from './lib/aiService';
+import { useLiveTicker } from './useLiveTicker';
 
 interface MarketTickerProps {
-  intelligence: any;
+  /** Optional — only available once past the gateway (Dashboard). On the
+   * LandingPage this is absent; MarketTicker fetches its own live data
+   * regardless via fetchLiveTickerData(), so it works fine without it. */
+  intelligence?: any;
   /**
    * Fired every time a fresh (non-cached-on-the-client) ticker payload is
    * fetched, so the parent can stash the raw JSON + soso-api-request-id in
@@ -16,8 +19,6 @@ interface MarketTickerProps {
    */
   onEvidence?: (payload: TickerPayload) => void;
 }
-
-const POLL_INTERVAL_MS = 60_000;
 
 function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
   const points = data.map((v, i) => ({ i, v }));
@@ -40,31 +41,7 @@ function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
 }
 
 export function MarketTicker({ intelligence, onEvidence }: MarketTickerProps) {
-  const [tickerItems, setTickerItems] = useState<TickerItem[]>([]);
-  const [source, setSource] = useState<'LIVE_API' | 'SIMULATED' | 'MIXED'>('SIMULATED');
-  const mountedRef = useRef(true);
-
-  useEffect(() => {
-    mountedRef.current = true;
-
-    const poll = async () => {
-      const payload = await fetchLiveTickerData();
-      if (!mountedRef.current) return;
-      setTickerItems(payload.items);
-      const sources = new Set(payload.items.map((it) => it.source));
-      setSource(sources.size > 1 ? 'MIXED' : (payload.items[0]?.source ?? 'SIMULATED'));
-      onEvidence?.(payload);
-    };
-
-    poll(); // fetch immediately on mount, don't wait for the first interval tick
-    const id = setInterval(poll, POLL_INTERVAL_MS);
-
-    return () => {
-      mountedRef.current = false;
-      clearInterval(id);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const { items: tickerItems, source } = useLiveTicker(onEvidence);
 
   // Fall back to whatever the dashboard's own `intelligence` blob has on the
   // very first paint, before the first ticker poll resolves, so the bar
