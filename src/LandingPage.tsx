@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   ChevronRight,
@@ -10,11 +10,17 @@ import {
   ArrowUpRight,
   Radio,
   ShieldCheck,
+  Github,
+  Twitter,
+  Send,
+  LifeBuoy,
+  FileText,
 } from 'lucide-react';
 import { CONTRACT_ADDRESS, AUTHORIZED_AUDITOR, SEPOLIA_CHAIN_ID } from './lib/contract';
 import { FloatingHeader, TickerItem as HeaderTickerItem } from './FloatingHeader';
 import { useLiveTicker } from './useLiveTicker';
 import { TickerPayload } from './lib/aiService';
+import { MethodologyModal } from './MethodologyModal';
 
 interface LandingPageProps {
   /** Fired when "Launch Terminal" is clicked — parent should mount the ConnectionGate next. */
@@ -59,6 +65,7 @@ const MODULES = [
 
 export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPageProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showMethodology, setShowMethodology] = useState(false);
   const { items } = useLiveTicker(onEvidence);
 
   // Map our TickerItem[] (label/price/change24h) into FloatingHeader's
@@ -255,7 +262,66 @@ export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPagePr
             </div>
           </div>
         </motion.div>
+
+        {/* Institutional Footer — About / Whitepaper / Contact links */}
+        <footer className="border-t border-white/5 bg-black">
+          <div className="max-w-6xl w-full mx-auto px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            {/* Group 1: Protocol */}
+            <nav className="flex flex-col gap-2.5">
+              <span className="text-[9px] uppercase tracking-widest text-slate-600 mb-0.5">Protocol</span>
+              <button
+                onClick={() => setShowMethodology(true)}
+                className="text-left text-[10px] uppercase tracking-widest text-muted hover:text-accent transition-colors flex items-center gap-1.5"
+              >
+                <FileText size={11} /> About SoSo-Vault
+              </button>
+              <button
+                onClick={() => setShowMethodology(true)}
+                className="text-left text-[10px] uppercase tracking-widest text-muted hover:text-accent transition-colors flex items-center gap-1.5"
+              >
+                <FileText size={11} /> Whitepaper (Methodology)
+              </button>
+              <a
+                href="https://github.com/dollaryusuf/core-intelligence"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] uppercase tracking-widest text-muted hover:text-accent transition-colors flex items-center gap-1.5"
+              >
+                <Github size={11} /> GitHub Repository
+              </a>
+            </nav>
+
+            {/* Group 2: Reach */}
+            <nav className="flex flex-col gap-2.5">
+              <span className="text-[9px] uppercase tracking-widest text-slate-600 mb-0.5">Reach</span>
+              <a
+                href="mailto:yusufabiodun009@gmail.com"
+                className="text-[10px] uppercase tracking-widest text-muted hover:text-accent transition-colors flex items-center gap-1.5"
+              >
+                <LifeBuoy size={11} /> Technical Support
+              </a>
+              <a
+                href="https://x.com/yusluvda"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] uppercase tracking-widest text-muted hover:text-accent transition-colors flex items-center gap-1.5"
+              >
+                <Twitter size={11} /> Twitter / X
+              </a>
+              <a
+                href="https://t.me/sosovault_bot"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] uppercase tracking-widest text-muted hover:text-accent transition-colors flex items-center gap-1.5"
+              >
+                <Send size={11} /> Telegram Sentinel
+              </a>
+            </nav>
+          </div>
+        </footer>
       </div>
+
+      <MethodologyModal isOpen={showMethodology} onClose={() => setShowMethodology(false)} />
     </motion.div>
   );
 }

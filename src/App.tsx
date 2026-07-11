@@ -53,6 +53,7 @@ import { AgentLogger } from './AgentLogger';
 import { AuditTrail } from './AuditTrail';
 import { VaultIntelligenceNode } from './VaultIntelligenceNode';
 import { DeployNodeModal } from './DeployNodeModal';
+import { MethodologyModal } from './MethodologyModal';
 import { MarketTicker } from './MarketTicker';
 import { RiskAuditFeed } from './RiskAuditFeed';
 import { OnChainLedger, OnChainLedgerEntry } from './OnChainLedger';
@@ -201,6 +202,7 @@ export default function App() {
   const [vaultEvents, setVaultEvents] = useState<Record<string, AuditEvent[]>>({});
   const [isAuditOpen, setIsAuditOpen] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
+  const [showMethodologyModal, setShowMethodologyModal] = useState(false);
   const [activeSignalAttribution, setActiveSignalAttribution] = useState<{ title: string; description: string }[] | null>(null);
   // Raw JSON payload + soso-api-request-id from the last MarketTicker fetch,
   // surfaced in the Evidence Vault panel so judges can verify the live feed.
@@ -899,7 +901,17 @@ VERIFIED VIA ZK-PROOF ATTESTATION
               <Zap className="text-black fill-current" size={24} />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight">SoSo-Vault <span className="text-accent underline underline-offset-4 decoration-1 font-serif italic text-sm ml-1">Core Intelligence</span></h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold tracking-tight">SoSo-Vault <span className="text-accent underline underline-offset-4 decoration-1 font-serif italic text-sm ml-1">Core Intelligence</span></h1>
+                <button
+                  onClick={() => setShowMethodologyModal(true)}
+                  className="w-5 h-5 rounded-full grid place-items-center text-muted hover:text-accent hover:bg-accent/10 border border-white/10 hover:border-accent/30 transition-colors shrink-0"
+                  title="System Documentation & Methodology"
+                  aria-label="Open system documentation"
+                >
+                  <Info size={11} />
+                </button>
+              </div>
               <div className="flex items-center gap-2 mt-0.5">
                 <p className="text-[10px] uppercase tracking-widest text-muted font-mono">Senior On-Chain Treasury Quant</p>
                 {intelligenceLoading ? (
@@ -2656,6 +2668,11 @@ VERIFIED VIA ZK-PROOF ATTESTATION
         onDeploy={handleDeployVault}
         walletConnected={walletConnected}
         walletAddress={walletAddress}
+      />
+
+      <MethodologyModal
+        isOpen={showMethodologyModal}
+        onClose={() => setShowMethodologyModal(false)}
       />
       </div>
     </>
