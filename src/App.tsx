@@ -384,7 +384,7 @@ export default function App() {
     setLoadingStep(1);
     addLog("Initiating Intelligence Node-001...", "process");
     
-    // Sequence to ensure UI updates and tab switches to 'strategy'
+    // Staged "thinking" sequence — purely visual (loading steps), no tab switch.
     setTimeout(() => {
       addLog("Cross-referencing SoSoValue Sentiment with Index Alpha...", "info");
       setLoadingStep(2);
@@ -396,11 +396,14 @@ export default function App() {
     }, 1600);
 
     setTimeout(() => {
-      // CRITICAL: Ensure analysis state is not null and tab switches
+      // CRITICAL: Ensure analysis state is not null so the Strategy tab has
+      // data ready the moment the user chooses to navigate there — but the
+      // tab switch itself is no longer automatic. Overview stays the
+      // default landing view; moving to Strategy is a deliberate user
+      // action, not something forced on them right after connecting.
       setAnalysis(mapIntelligenceToAnalysis(intelligence, blackSwanActive)); 
       setLoading(false);
       setLoadingStep(0);
-      setActiveTab('strategy');
       addLog("Strategic Mandate finalized: REBALANCE.", "info");
     }, 2400);
   };
@@ -1067,10 +1070,10 @@ VERIFIED VIA ZK-PROOF ATTESTATION
           {activeTab === 'overview' ? (
             <motion.div 
               key="overview-tab"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
+              transition={{ duration: 0.45, ease: 'easeOut' }}
               className="min-h-[100vh] w-full overflow-x-hidden flex flex-col gap-4"
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-full min-w-0">
