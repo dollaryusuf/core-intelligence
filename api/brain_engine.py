@@ -83,7 +83,54 @@ class BrainEngine:
             final_decision["risk_engine"]["circuit_breaker_active"] = True
             
         final_decision["debate_log"]["risk_auditor"]["safe_size_limit"] = kelly_size
+
+        # Combined Neural Rationale — a single human-readable sentence that
+        # cross-examines the Alpha Hunter's stance against the Risk
+        # Auditor's deterministic verdict, e.g.:
+        # "Alpha Hunter is Bullish, but Risk Auditor VETOED full entry due
+        #  to 0.06% Funding Rate. Result: Scaled Position."
+        final_decision["neural_rationale"] = self._build_neural_rationale(market_state, final_decision, override_logs)
+
         return final_decision
+
+    def _build_neural_rationale(self, market_state: Dict[str, Any], final_decision: Dict[str, Any], override_logs: list) -> str:
+        """
+        Cross-examines the Alpha Hunter's read of sentiment against the Risk
+        Auditor's deterministic verdict on funding rate / leverage risk, and
+        renders it as a single combined-rationale sentence for the log.
+        """
+        funding_rate = market_state.get("funding_rates", 0.0)
+        sentiment_score = market_state.get("sentiment_score", 0.5)
+        funding_limit = self.risk_engine.funding_rate_limit
+
+        hunter_stance = "Bullish (AGGRESSIVE ACCUMULATION)" if sentiment_score > 0.70 else "Neutral"
+        leverage_excessive = funding_rate > funding_limit
+
+        action = final_decision.get("allocation_plan", {}).get("action", "HOLD")
+
+        if leverage_excessive and hunter_stance.startswith("Bullish"):
+            return (
+                f"Alpha Hunter is {hunter_stance}, but Risk Auditor flagged EXCESSIVE LEVERAGE "
+                f"due to a {funding_rate:.2f}% Funding Rate (limit {funding_limit:.2f}%). "
+                f"Result: Scaled Position."
+            )
+        if leverage_excessive:
+            return (
+                f"Risk Auditor flagged EXCESSIVE LEVERAGE at a {funding_rate:.2f}% Funding Rate "
+                f"(limit {funding_limit:.2f}%), independent of Alpha Hunter's {hunter_stance} read. "
+                f"Result: {action}."
+            )
+        if hunter_stance.startswith("Bullish"):
+            return (
+                f"Alpha Hunter is {hunter_stance} on a {sentiment_score*100:.0f}% Sentiment reading. "
+                f"Risk Auditor confirms Funding Rate ({funding_rate:.2f}%) within safe bounds. "
+                f"Result: {action}."
+            )
+        return (
+            f"Alpha Hunter holds a Neutral stance ({sentiment_score*100:.0f}% Sentiment); no high-conviction "
+            f"signal to cross-examine. Risk Auditor confirms Funding Rate ({funding_rate:.2f}%) within safe bounds. "
+            f"Result: {action}."
+        )
 
     def simulate_analysis(self, market_state: Dict[str, Any], portfolio: Dict[str, Any]) -> Dict[str, Any]:
         """

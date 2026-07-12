@@ -378,6 +378,30 @@ export default function App() {
     }
   }, [walletConnected, isGuestMode]);
 
+  const [analysisButtonState, setAnalysisButtonState] = useState<'idle' | 'analyzing' | 'done'>('idle');
+
+  const handleGenerateAnalysis = async () => {
+    if (analysisButtonState === 'analyzing') return;
+    setAnalysisButtonState('analyzing');
+    addLog("Cross-examining live Funding Rate & Sentiment via Neural Consensus Engine...", "process");
+
+    try {
+      const result = await getSoSoVaultAnalysis(data.sentiment, data.sectors, data.macro, data.portfolio);
+      setAnalysis(result);
+      addLog(result.neural_rationale || result.reasoning_narrative || "Neural Consensus Finalized.", "info");
+      setAnalysisButtonState('done');
+    } catch (err) {
+      console.error("Generate Analysis failed:", err);
+      addLog("[ERROR] Neural Consensus Engine unreachable — retaining prior analysis.", "alert");
+      setAnalysisButtonState('idle');
+      return;
+    }
+
+    // Return the button to its normal state after a beat so it's ready for
+    // the next click, rather than getting permanently stuck on "Consensus Reached."
+    setTimeout(() => setAnalysisButtonState('idle'), 2200);
+  };
+
   const runAnalysis = () => {
     if (loading) return;
     setLoading(true);
@@ -1383,12 +1407,26 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                       {isSimulating ? `${simulationDay}/7` : "Backtest"}
                     </button>
                     <button 
-                      disabled={loading || isSimulating}
-                      onClick={runAnalysis}
+                      disabled={loading || isSimulating || analysisButtonState === 'analyzing'}
+                      onClick={handleGenerateAnalysis}
                       className="flex-1 py-3 bg-white text-black font-bold uppercase tracking-widest text-[10px] rounded-xl hover:bg-accent transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      Generate Analysis
-                      <ArrowUpRight size={14} />
+                      {analysisButtonState === 'analyzing' ? (
+                        <>
+                          <RefreshCcw size={12} className="animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : analysisButtonState === 'done' ? (
+                        <>
+                          <ShieldCheck size={12} />
+                          Consensus Reached
+                        </>
+                      ) : (
+                        <>
+                          Generate Analysis
+                          <ArrowUpRight size={14} />
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

@@ -101,4 +101,16 @@ export interface SoSoVaultAnalysis {
     trade_rationale: string;
   };
   reasoning_narrative: string;
+  neural_rationale?: string;
+  signal_attribution?: any;
+  debate_log?: {
+    alpha_hunter: string;
+    risk_auditor: {
+      status: string;
+      confidence_score: number;
+      safe_size_limit: number;
+      final_verdict_summary: string;
+      [key: string]: any;
+    };
+  };
 }
