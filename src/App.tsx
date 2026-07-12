@@ -411,6 +411,7 @@ export default function App() {
   const handleBacktest = async () => {
     setIsSimulating(true);
     addLog("7-Day Backtest initiated...", "alert");
+    addLog("Fetching 7-Day Historical Data from SoSoValue...", "info");
     
     try {
       const result = await safeFetchJson('/api/backtest', {
@@ -438,7 +439,7 @@ export default function App() {
         let latestAlpha = normalizedData[normalizedData.length - 1]?.alpha || "17.0%";
         setAlphaCapture(latestAlpha);
         
-        addLog("Alert sent to Telegram Sentinel: 0x42f... verified.", "info");
+        addLog(`Alert sent to Telegram Sentinel: ${AUTHORIZED_AUDITOR.slice(0, 6)}... verified.`, "info");
         addLog(`7-Day Backtest complete. Alpha Capture: ${latestAlpha}.`, "info");
       }
     } catch (err) {

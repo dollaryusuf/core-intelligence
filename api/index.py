@@ -256,15 +256,21 @@ def ledger():
     return _safe_json(run, lambda: [])
 
 
-@app.route("/api/backtest", methods=["GET"])
+@app.route("/api/backtest", methods=["POST", "OPTIONS"])
 def backtest():
-    def run():
-        market_state = soso_service.get_aggregated_market_state()
-        return performance_manager.run_simulated_backtest(
-            sentiment_score=market_state.get("sentiment_score", 0.5)
-        )
+    # This is the actual bug behind the "Expected JSON but received an HTML
+    # page" error: this route only accepted GET while the frontend sends a
+    # POST. Flask's default response for a method mismatch on a matched
+    # route is a 405 error page rendered as HTML — which is exactly what
+    # safeFetchJson (correctly) flagged as looking like a routing fallback.
+    # It was never actually a Vercel routing/404 issue.
+    if request.method == "OPTIONS":
+        return '', 200
 
-    return _safe_json(run, lambda: [])
+    def run():
+        return performance_manager.fetch_historical_7d_data(soso_service)
+
+    return _safe_json(run, lambda: {"status": "error", "data": [], "backtest_data": []})
 
 
 # Local dev convenience: `python api/index.py` runs a dev server on :5328.
