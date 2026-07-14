@@ -303,3 +303,36 @@ export const fetchLiveTickerData = async (): Promise<TickerPayload> => {
   }
 };
 
+export interface NeuralInsightPayload {
+  status: string;
+  report: string | null;
+  raw_data: Record<string, any>;
+  source: 'LIVE_API' | 'SIMULATED';
+  timestamp: number;
+}
+
+/**
+ * 7-Day written Neural Insight — a hedge-fund-memo-style report synthesized
+ * from real ETF flow / BTC price history / funding rate data. Falls back to
+ * a clearly-labeled simulated report if the backend is unreachable, same
+ * honesty contract as every other live data path in this app.
+ */
+export const fetchNeuralInsight = async (): Promise<NeuralInsightPayload> => {
+  try {
+    const payload = await safeFetchJson("/api/generate-insight", { method: "POST" });
+    if (!payload || typeof payload.report !== "string") {
+      throw new Error("Neural insight payload was empty or malformed.");
+    }
+    return payload as NeuralInsightPayload;
+  } catch (error) {
+    console.error("Failed to fetch neural insight:", error);
+    return {
+      status: "error",
+      report: "Neural Insight Engine unreachable — institutional data synthesis could not complete this cycle. Retry to re-establish the SoSoValue data link.",
+      raw_data: {},
+      source: "SIMULATED",
+      timestamp: Date.now() / 1000,
+    };
+  }
+};
+

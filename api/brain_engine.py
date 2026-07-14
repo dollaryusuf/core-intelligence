@@ -132,6 +132,82 @@ class BrainEngine:
             f"Result: {action}."
         )
 
+    def get_7d_analysis(self, soso_service, performance_manager) -> Dict[str, Any]:
+        """
+        Synthesizes a written, hedge-fund-memo-style "Neural Insight" from
+        real 7-day SoSoValue data: ETF net inflow trend, BTC price history
+        (via the verified klines-backed backtest data), and the current
+        funding rate. This is template-driven prose grounded in real
+        numbers — not a live LLM call — consistent with this engine's
+        existing simulate_analysis() approach elsewhere in the file.
+        Returns the report text plus the raw data behind it, so the caller
+        can push that raw payload to the Evidence Vault for verification.
+        """
+        etf_data = soso_service.fetch_etf_data()
+        market_state = soso_service.get_aggregated_market_state()
+        backtest = performance_manager.fetch_historical_7d_data(soso_service)
+
+        weekly_trend = etf_data.get("historical_flows_weekly_trend", [])
+        net_inflow_weekly_usd = etf_data.get("net_inflow_weekly", 0.0)
+        net_inflow_weekly_m = net_inflow_weekly_usd / 1_000_000.0
+        funding_rate = market_state.get("funding_rates", 0.0)
+        funding_limit = self.risk_engine.funding_rate_limit
+
+        records = backtest.get("data", [])
+        seven_day_alpha = records[-1].get("alpha") if records else "+0.0%"
+
+        # Narrative framing for institutional appetite, driven by the sign
+        # and trend direction of the real weekly inflow figure.
+        if net_inflow_weekly_usd > 0:
+            if len(weekly_trend) >= 2 and weekly_trend[-1] >= weekly_trend[0]:
+                appetite = "strengthened"
+            else:
+                appetite = "stabilized"
+            inflow_sign = "+"
+        else:
+            appetite = "weakened"
+            inflow_sign = "-"
+
+        leverage_note = (
+            f"suggesting an overheated leverage environment that warrants caution"
+            if funding_rate > funding_limit
+            else "suggesting a cautious, well-contained leverage environment"
+        )
+
+        if funding_rate > funding_limit and net_inflow_weekly_usd > 0:
+            recommendation = "Neutral-Aggressive"
+        elif funding_rate > funding_limit:
+            recommendation = "Defensive"
+        elif net_inflow_weekly_usd > 0:
+            recommendation = "Aggressive-Accumulate"
+        else:
+            recommendation = "Neutral"
+
+        report = (
+            f"Over the last 7 sessions, institutional appetite has {appetite} with a cumulative ETF "
+            f"inflow of {inflow_sign}${abs(net_inflow_weekly_m):.0f}M. BTC Funding remains at "
+            f"{funding_rate:.3f}%, {leverage_note}. The Neural Consensus 7-day Alpha stands at "
+            f"{seven_day_alpha} versus the BTC benchmark. Recommendation: {recommendation}."
+        )
+
+        raw_data = {
+            "etf_weekly_inflow_trend_millions": weekly_trend,
+            "etf_net_inflow_weekly_usd": net_inflow_weekly_usd,
+            "btc_funding_rate_pct": funding_rate,
+            "funding_rate_limit_pct": funding_limit,
+            "seven_day_backtest": records,
+            "seven_day_alpha": seven_day_alpha,
+        }
+
+        # Honest about provenance: only call this LIVE_API if every
+        # underlying real-data component actually resolved live.
+        source = "LIVE_API" if (
+            etf_data.get("source") == "LIVE_API" and
+            backtest.get("source") == "LIVE_API"
+        ) else "SIMULATED"
+
+        return {"report": report, "raw_data": raw_data, "source": source}
+
     def simulate_analysis(self, market_state: Dict[str, Any], portfolio: Dict[str, Any]) -> Dict[str, Any]:
         """
         Mock response for v1.0 Demo Deployment. Matches the structure used in server.ts

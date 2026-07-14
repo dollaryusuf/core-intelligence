@@ -137,6 +137,30 @@ def analyze():
     return _safe_json(run, lambda: brain.simulate_analysis({}, {}))
 
 
+@app.route("/api/generate-insight", methods=["POST", "OPTIONS"])
+def generate_insight():
+    if request.method == "OPTIONS":
+        return '', 200
+
+    def run():
+        result = brain.get_7d_analysis(soso_service, performance_manager)
+        return {
+            "status": "success",
+            "report": result["report"],
+            "raw_data": result["raw_data"],
+            "source": result["source"],
+            "timestamp": time.time(),
+        }
+
+    return _safe_json(run, lambda: {
+        "status": "error",
+        "report": None,
+        "raw_data": {},
+        "source": "SIMULATED",
+        "timestamp": time.time(),
+    })
+
+
 @app.route("/api/intelligence", methods=["GET"])
 def intelligence():
     def run():

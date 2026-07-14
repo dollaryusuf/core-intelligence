@@ -24,6 +24,7 @@ import {
   Download,
   ShieldAlert,
   ShieldCheck,
+  BrainCircuit,
   ArrowLeft,
   X,
   Terminal,
@@ -72,8 +73,11 @@ import {
   getHostBacktestTimeline,
   getPythonAlphaData,
   safeFetchJson,
-  TickerPayload
+  TickerPayload,
+  fetchNeuralInsight,
+  NeuralInsightPayload
 } from './lib/aiService';
+import { TypewriterText } from './TypewriterText';
 import { 
   SoSoVaultAnalysis, 
   MarketSentiment, 
@@ -204,6 +208,8 @@ export default function App() {
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [showMethodologyModal, setShowMethodologyModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [analysisReport, setAnalysisReport] = useState<string | null>(null);
+  const [insightEvidence, setInsightEvidence] = useState<NeuralInsightPayload | null>(null);
   const [activeSignalAttribution, setActiveSignalAttribution] = useState<{ title: string; description: string }[] | null>(null);
   // Raw JSON payload + soso-api-request-id from the last MarketTicker fetch,
   // surfaced in the Evidence Vault panel so judges can verify the live feed.
@@ -396,6 +402,21 @@ export default function App() {
       addLog("[ERROR] Neural Consensus Engine unreachable — retaining prior analysis.", "alert");
       setAnalysisButtonState('idle');
       return;
+    }
+
+    // Fetch the 7-day written Neural Insight report in parallel with the
+    // quantitative analysis above. Kept as its own try/catch so a failure
+    // here never blocks or reverts the analysis result that already
+    // succeeded — this is an additive institutional-narrative layer, not
+    // a dependency of the core Generate Analysis flow.
+    try {
+      addLog("Synthesizing 7-Day Institutional Insight from SoSoValue history...", "process");
+      const insight = await fetchNeuralInsight();
+      setAnalysisReport(insight.report);
+      setInsightEvidence(insight); // Task 4: raw payload -> Evidence Vault
+      addLog(`[NEURAL_INSIGHT] 7-day report transmitted (${insight.source}).`, "info");
+    } catch (insightErr) {
+      console.error("fetchNeuralInsight failed:", insightErr);
     }
 
     // Return the button to its normal state after a beat so it's ready for
@@ -1457,6 +1478,28 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                     </button>
                   </div>
                 </div>
+
+                {/* Neural Insight 7D — written institutional report, only appears once generated */}
+                <AnimatePresence>
+                  {analysisReport && (
+                    <motion.div
+                      key="neural-insight-card"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.4 }}
+                      className="bg-[#050a08] border border-emerald-500/20 rounded-2xl p-4 sm:p-6"
+                    >
+                      <h3 className="text-[10px] font-mono uppercase tracking-widest text-emerald-500/70 flex items-center gap-2 mb-4">
+                        <BrainCircuit size={13} />
+                        [ SYSTEM_CORE // NEURAL_INSIGHT_7D ]
+                      </h3>
+                      <p className="text-[12px] font-mono text-emerald-100/80 leading-relaxed">
+                        <TypewriterText text={analysisReport} />
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* On-Chain Audit Ledger (populated after Execute Rebalance) */}
                 <OnChainLedger entries={onChainLedger} />
@@ -2538,6 +2581,23 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                       soso-api-request-id: <span className="text-white">{tickerEvidence.request_id ?? 'n/a (fallback payload)'}</span>
                     </div>
                     <JsonView data={tickerEvidence} />
+                  </div>
+                )}
+                {insightEvidence && (
+                  <div className="p-5 bg-white/[0.03] border border-emerald-500/10 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h6 className="text-[10px] font-bold uppercase text-emerald-500 font-mono flex items-center gap-2">
+                        <BrainCircuit size={12} />
+                        7-Day Neural Insight &middot; Source Data
+                      </h6>
+                      <span className="text-[9px] font-mono text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">
+                        {insightEvidence.source}
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-mono text-gray-400 leading-relaxed">
+                      This is the raw 7-day ETF flow / BTC price history / funding rate data the written report above was synthesized from.
+                    </p>
+                    <JsonView data={insightEvidence.raw_data} />
                   </div>
                 )}
                 <div className="space-y-4">
