@@ -28,6 +28,7 @@ import sys
 import os
 import time
 import traceback
+import requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -46,6 +47,67 @@ brain = BrainEngine()
 risk_engine = RiskEngine()
 execution_engine = ExecutionEngine()
 performance_manager = PerformanceManager()
+
+# --- Telegram Sentinel ---
+# Task 1: pulled from environment. Both are optional — if either is
+# missing, send_telegram_message() no-ops (logs and returns False) rather
+# than raising, so nothing that calls it can ever crash because of a
+# missing/misconfigured bot.
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+
+def send_telegram_message(message: str, chat_id: str = None) -> bool:
+    """
+    Task 3: Push-to-Sentinel helper. Sends `message` (Markdown-formatted)
+    to TELEGRAM_CHAT_ID by default, or an explicit chat_id (used by the
+    webhook when replying to whichever chat sent a command).
+    Task 4: never raises — wrapped in try/except, returns True/False so
+    callers (e.g. /api/generate-insight) can log the outcome without ever
+    letting a Telegram failure break their own response.
+    """
+    target_chat_id = chat_id or TELEGRAM_CHAT_ID
+    if not TELEGRAM_TOKEN or not target_chat_id:
+        print("[Telegram] Skipped: TELEGRAM_TOKEN or chat_id not configured.")
+        return False
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        resp = requests.post(
+            url,
+            json={"chat_id": target_chat_id, "text": message, "parse_mode": "Markdown"},
+            timeout=6,
+        )
+        if resp.status_code != 200:
+            print(f"[Telegram] sendMessage failed: {resp.status_code} {resp.text[:200]}")
+            return False
+        return True
+    except Exception as e:
+        print(f"[Telegram] sendMessage error: {e}")
+        return False
+
+
+def _format_insight_for_telegram(report: str, raw_data: dict) -> str:
+    """
+    Builds the Markdown-formatted push message for the 7-day Neural
+    Insight. Key figures are rendered in `code style` (Telegram backticks)
+    rather than regex-bolding the free-form report text, which would be
+    fragile — this pulls the same structured raw_data the report itself
+    was synthesized from, so the highlighted numbers are guaranteed to
+    match exactly.
+    """
+    inflow_m = raw_data.get("etf_net_inflow_weekly_usd", 0) / 1_000_000.0
+    funding = raw_data.get("btc_funding_rate_pct", 0)
+    alpha = raw_data.get("seven_day_alpha", "+0.0%")
+    inflow_str = f"+${inflow_m:.1f}M" if inflow_m >= 0 else f"-${abs(inflow_m):.1f}M"
+
+    return (
+        f"🧠 *SoSo-Vault Neural Insight (7D)*\n\n"
+        f"{report}\n\n"
+        f"📊 *Key Metrics*\n"
+        f"• ETF Weekly Inflow: `{inflow_str}`\n"
+        f"• BTC Funding Rate: `{funding:.3f}%`\n"
+        f"• 7D Alpha vs BTC: `{alpha}`"
+    )
 
 # In-memory demo state — resets whenever the serverless function cold-starts.
 # Fine for a hackathon/demo build; swap for a real datastore for anything
@@ -144,11 +206,25 @@ def generate_insight():
 
     def run():
         result = brain.get_7d_analysis(soso_service, performance_manager)
+
+        # Task 3.2 / Task 4: "Push-to-Sentinel" — fires after the report is
+        # generated, but is fully isolated: send_telegram_message() itself
+        # never raises, and this is wrapped again here as a second layer of
+        # defense so that even an unexpected error in the formatting step
+        # can't take down the response the website is waiting on.
+        telegram_sent = False
+        try:
+            telegram_text = _format_insight_for_telegram(result["report"], result["raw_data"])
+            telegram_sent = send_telegram_message(telegram_text)
+        except Exception as e:
+            print(f"[Telegram] Push-to-Sentinel failed (non-fatal): {e}")
+
         return {
             "status": "success",
             "report": result["report"],
             "raw_data": result["raw_data"],
             "source": result["source"],
+            "telegram_sent": telegram_sent,
             "timestamp": time.time(),
         }
 
@@ -157,8 +233,88 @@ def generate_insight():
         "report": None,
         "raw_data": {},
         "source": "SIMULATED",
+        "telegram_sent": False,
         "timestamp": time.time(),
     })
+
+
+@app.route("/api/webhook", methods=["POST", "OPTIONS"])
+def telegram_webhook():
+    """
+    Telegram bot webhook. Telegram POSTs an "Update" object here whenever a
+    user messages the bot. We always return 200 quickly (Telegram retries
+    aggressively on non-200s) and send any reply asynchronously via
+    send_telegram_message() rather than returning it in the response body —
+    that's how Telegram bots actually communicate back to the user.
+    """
+    if request.method == "OPTIONS":
+        return '', 200
+
+    def run():
+        update = request.get_json(force=True, silent=True) or {}
+        message = update.get("message", {}) or update.get("edited_message", {})
+        text = (message.get("text") or "").strip()
+        chat_id = message.get("chat", {}).get("id")
+
+        if not text or not chat_id:
+            return {"ok": True, "handled": False}
+
+        # Strip a possible "@BotUsername" suffix (Telegram appends this in
+        # group chats, e.g. "/status@sosovault_bot").
+        command = text.split()[0].split("@")[0].lower()
+
+        try:
+            if command == "/status":
+                market_state = soso_service.get_aggregated_market_state()
+                decision = brain.get_neural_decision(market_state, {"holdings": []})
+                sentiment_pct = market_state.get("sentiment_score", 0.5) * 100
+                action = decision.get("allocation_plan", {}).get("action", "HOLD")
+                auditor_status = decision.get("debate_log", {}).get("risk_auditor", {}).get("status", "UNKNOWN")
+                reply = (
+                    f"📡 *Neural Consensus Status*\n\n"
+                    f"Sentiment: `{sentiment_pct:.0f}%`\n"
+                    f"Risk Auditor: `{auditor_status}`\n"
+                    f"Current Action: `{action}`\n\n"
+                    f"{decision.get('neural_rationale', decision.get('reasoning_narrative', ''))}"
+                )
+
+            elif command == "/risk":
+                market_state = soso_service.get_aggregated_market_state()
+                decision = brain.get_neural_decision(market_state, {"holdings": []})
+                kelly_size = decision.get("debate_log", {}).get("risk_auditor", {}).get("safe_size_limit", 0)
+                reply = (
+                    f"🛡️ *Risk Auditor — Position Sizing*\n\n"
+                    f"Half-Kelly Safe Size Limit: `{kelly_size}%`\n"
+                    f"Funding Rate Limit: `{risk_engine.funding_rate_limit:.2f}%`\n"
+                    f"ETF Outflow VETO Threshold: `-${abs(risk_engine.etf_outflow_threshold)/1_000_000:.0f}M`"
+                )
+
+            elif command == "/alpha":
+                sentiment = soso_service.fetch_news_sentiment()
+                narratives = sentiment.get("top_narratives", [])
+                narratives_str = ", ".join(f"`{n}`" for n in narratives) if narratives else "none currently flagged"
+                reply = (
+                    f"⚡ *Alpha Hunter — Top Narratives*\n\n"
+                    f"{narratives_str}\n\n"
+                    f"_{sentiment.get('news_mood_summary', '')}_"
+                )
+
+            else:
+                reply = (
+                    "🤖 *SoSo-Vault Sentinel*\n\n"
+                    "Available commands:\n"
+                    "`/status` — Neural Consensus (Sentiment vs Risk Auditor)\n"
+                    "`/risk` — Current Kelly Criterion position size\n"
+                    "`/alpha` — Top narratives from the SoSoValue feed"
+                )
+        except Exception as e:
+            print(f"[Telegram Webhook] Command handling error: {e}")
+            reply = "⚠️ Neural Consensus Engine temporarily unreachable. Try again shortly."
+
+        sent = send_telegram_message(reply, chat_id=chat_id)
+        return {"ok": True, "handled": True, "command": command, "sent": sent}
+
+    return _safe_json(run, lambda: {"ok": True, "handled": False})
 
 
 @app.route("/api/intelligence", methods=["GET"])
