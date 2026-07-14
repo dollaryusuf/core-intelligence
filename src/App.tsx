@@ -203,6 +203,7 @@ export default function App() {
   const [isAuditOpen, setIsAuditOpen] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [showMethodologyModal, setShowMethodologyModal] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeSignalAttribution, setActiveSignalAttribution] = useState<{ title: string; description: string }[] | null>(null);
   // Raw JSON payload + soso-api-request-id from the last MarketTicker fetch,
   // surfaced in the Evidence Vault panel so judges can verify the live feed.
@@ -659,6 +660,15 @@ VERIFIED VIA ZK-PROOF ATTESTATION
         setShowReceipt(true);
         setRebalanced(true);
         addLog(`[LEDGER] Vault-001 Rebalance settled. Alpha Capture: +0.05%.`, "info");
+
+        // "Victory Lap" — ONLY fires here, on confirmed execution success
+        // (either the real Sepolia broadcast or the local settlement
+        // fallback), never from a background data-fetch. Overview remains
+        // the mandatory entry point; this is the one deliberate, earned
+        // redirect to the Empire Scaling view.
+        setActiveTab('empire');
+        setToastMessage("Signal Propagated. Viewing Global Empire Impact.");
+        setTimeout(() => setToastMessage(null), 3500);
       }, 400);
     }
   };
@@ -918,6 +928,23 @@ VERIFIED VIA ZK-PROOF ATTESTATION
   return (
     <>
       <div className="min-h-screen w-full max-w-full overflow-x-hidden grid-bg">
+      {/* "Victory Lap" toast — fires only from handleExecute on confirmed
+          rebalance success, never from background data fetches. */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: -20, x: '-50%' }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="fixed top-20 left-1/2 z-[200] px-5 py-3 rounded-xl bg-accent text-black font-bold text-[12px] font-mono shadow-2xl flex items-center gap-2 whitespace-nowrap"
+          >
+            <TrendingUp size={14} />
+            {toastMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Live Market Ticker */}
       <MarketTicker intelligence={intelligence} onEvidence={setTickerEvidence} />
 
