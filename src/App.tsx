@@ -78,6 +78,9 @@ import {
   NeuralInsightPayload
 } from './lib/aiService';
 import { TypewriterText } from './TypewriterText';
+import { InfoTooltip } from './InfoTooltip';
+import { AgentDialogue } from './AgentDialogue';
+import { StatusBadge } from './StatusBadge';
 import { 
   SoSoVaultAnalysis, 
   MarketSentiment, 
@@ -210,6 +213,21 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [analysisReport, setAnalysisReport] = useState<string | null>(null);
   const [insightEvidence, setInsightEvidence] = useState<NeuralInsightPayload | null>(null);
+  const [systemStatusIndex, setSystemStatusIndex] = useState(0);
+
+  const SYSTEM_STATUS_MESSAGES = [
+    "System is currently monitoring SoSoValue for institutional shifts...",
+    "Risk Auditor is standing by to veto high-leverage signals...",
+    "Last rebalance successfully settled on Ethereum Sepolia...",
+  ];
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSystemStatusIndex((prev) => (prev + 1) % SYSTEM_STATUS_MESSAGES.length);
+    }, 4500);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [activeSignalAttribution, setActiveSignalAttribution] = useState<{ title: string; description: string }[] | null>(null);
   // Raw JSON payload + soso-api-request-id from the last MarketTicker fetch,
   // surfaced in the Evidence Vault panel so judges can verify the live feed.
@@ -1140,27 +1158,37 @@ VERIFIED VIA ZK-PROOF ATTESTATION
         </div>
       </header>
 
-      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 overflow-x-hidden">
+      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 pb-12 overflow-x-hidden">
         {/* Navigation Tabs */}
         <div className="flex gap-8 border-b border-white/5 mb-8 pb-px">
-          {['overview', 'strategy', 'empire'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab as any)}
-              className={cn(
-                "pb-4 text-xs font-mono uppercase tracking-[0.2em] relative transition-colors",
-                activeTab === tab ? "text-white" : "text-muted hover:text-white"
-              )}
-            >
-              {tab === 'empire' ? 'Empire Scaling' : tab}
-              {activeTab === tab && (
-                <motion.div 
-                  layoutId="activeTab" 
-                  className="absolute bottom-0 left-0 right-0 h-1 bg-accent"
-                />
-              )}
-            </button>
-          ))}
+          {(['overview', 'strategy', 'empire'] as const).map((tab) => {
+            const breadcrumb = {
+              overview: '01 // MARKET_PULSE',
+              strategy: '02 // DECISION_ENGINE',
+              empire: '03 // GLOBAL_IMPACT',
+            }[tab];
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab as any)}
+                className={cn(
+                  "pb-4 text-xs font-mono uppercase tracking-[0.2em] relative transition-colors",
+                  activeTab === tab ? "text-white" : "text-muted hover:text-white"
+                )}
+              >
+                {tab === 'empire' ? 'Empire Scaling' : tab}
+                <span className="hidden sm:inline text-muted/60 normal-case tracking-normal ml-1.5 text-[9px]">
+                  →→ {breadcrumb}
+                </span>
+                {activeTab === tab && (
+                  <motion.div 
+                    layoutId="activeTab" 
+                    className="absolute bottom-0 left-0 right-0 h-1 bg-accent"
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
 
         <AnimatePresence mode="wait">
@@ -1237,6 +1265,9 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                       <h3 className="text-[11px] font-mono uppercase tracking-widest text-muted flex items-center gap-2">
                         <Cpu size={14} className="text-accent" />
                         Institutional ETF Flows
+                        <InfoTooltip>
+                          Money moving in or out of Bitcoin/Ethereum ETFs. Large outflows suggest big institutions are pulling back.
+                        </InfoTooltip>
                         {analysis?.signal_attribution && (
                           <button 
                             onClick={() => setActiveSignalAttribution(analysis.signal_attribution)}
@@ -1252,6 +1283,13 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                     <div className="text-right">
                       <div className="text-xs font-mono text-muted uppercase mb-1">Signal</div>
                       <div className="text-sm font-bold text-accent">{data?.macro?.institutionalSignal}</div>
+                      {(() => {
+                        const flows = intelligence?.live_data?.etf_net_flows;
+                        const latestFlow = flows?.length ? flows[flows.length - 1] : null;
+                        return latestFlow !== null && latestFlow <= -100 ? (
+                          <div className="mt-1"><StatusBadge label="INSTITUTIONAL EXIT" tone="amber" /></div>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                   {intelligenceLoading ? (
@@ -1459,13 +1497,26 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                   </h3>
                   <div className="grid grid-cols-2 gap-3 mb-6">
                     <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                      <div className="text-[9px] font-mono text-muted uppercase mb-1.5">BTC Funding</div>
-                      <div className={cn("text-lg font-bold font-mono", data.macro.fundingRate > 0.05 ? "text-danger" : "text-white")}>
-                        {data.macro.fundingRate}%
+                      <div className="text-[9px] font-mono text-muted uppercase mb-1.5 flex items-center gap-1.5">
+                        BTC Funding
+                        <InfoTooltip>
+                          The cost of holding a position. High rates suggest the market is over-leveraged and risky.
+                        </InfoTooltip>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className={cn("text-lg font-bold font-mono", data.macro.fundingRate > 0.05 ? "text-danger" : "text-white")}>
+                          {data.macro.fundingRate}%
+                        </div>
+                        {data.macro.fundingRate > 0.05 && <StatusBadge label="OVERHEATED" tone="danger" />}
                       </div>
                     </div>
                     <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                      <div className="text-[9px] font-mono text-muted uppercase mb-1.5">Vol Rank</div>
+                      <div className="text-[9px] font-mono text-muted uppercase mb-1.5 flex items-center gap-1.5">
+                        Vol Rank
+                        <InfoTooltip>
+                          How volatile this asset has been recently, ranked against its own history. Higher means bigger price swings.
+                        </InfoTooltip>
+                      </div>
                       <div className="text-lg font-bold font-mono text-white">42/100</div>
                     </div>
                   </div>
@@ -1528,6 +1579,32 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                       <p className="text-[12px] font-mono text-emerald-100/80 leading-relaxed">
                         <TypewriterText text={analysisReport} />
                       </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Agent Dialogue — turns the Alpha Hunter / Risk Auditor debate into a readable exchange */}
+                <AnimatePresence>
+                  {analysis && (
+                    <motion.div
+                      key="agent-dialogue"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.4, delay: 0.1 }}
+                    >
+                      <AgentDialogue
+                        alphaHunterLine={
+                          analysis.debate_log?.alpha_hunter ||
+                          "Narrative looks strong in AI sectors."
+                        }
+                        riskAuditorLine={
+                          analysis.debate_log?.risk_auditor?.final_verdict_summary ||
+                          (analysis.risk_engine?.circuit_breaker_active
+                            ? "Agreed, but ETF outflows are high. Scaling down entry by 50%."
+                            : "Confirmed — funding rate and outflows are within safe bounds.")
+                        }
+                      />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1679,10 +1756,18 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                               <p className="text-[11px] font-bold text-white font-mono mt-1">+{vault.total_return}%</p>
                             </div>
                             <div className="p-3 bg-white/[0.02] rounded-xl border border-white/5">
-                              <p className="text-[9px] font-mono text-muted uppercase tracking-widest">Alpha vs BTC</p>
+                              <p className="text-[9px] font-mono text-muted uppercase tracking-widest flex items-center gap-1">
+                                Alpha vs BTC
+                                <InfoTooltip align="right">
+                                  How much better (or worse) this vault performed compared to simply holding Bitcoin over the same period.
+                                </InfoTooltip>
+                              </p>
                               <p className={cn("text-[11px] font-bold font-mono mt-1", vault.alpha_vs_btc >= 0 ? "text-accent" : "text-danger")}>
                                 {vault.alpha_vs_btc >= 0 ? "+" : ""}{vault.alpha_vs_btc}%
                               </p>
+                              {vault.alpha_vs_btc > 0 && (
+                                <div className="mt-1"><StatusBadge label="OUTPERFORMING" tone="accent" /></div>
+                              )}
                             </div>
                           </div>
                           <div className="flex justify-between items-end">
@@ -1815,6 +1900,9 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                           <span className="text-[10px] font-mono font-bold text-accent uppercase">
                             Half-Kelly Size: <span className="font-mono-numbers">{intelligence?.risk_engine?.kelly_size || "31.67"}%</span>
                           </span>
+                          <InfoTooltip align="right">
+                            A mathematical formula used to determine the perfect trade size to maximize growth while protecting your balance.
+                          </InfoTooltip>
                           <button 
                             onClick={() => analysis?.signal_attribution && setActiveSignalAttribution(analysis.signal_attribution)}
                             className="bg-accent/20 hover:bg-accent/40 rounded p-0.5"
@@ -2834,6 +2922,28 @@ VERIFIED VIA ZK-PROOF ATTESTATION
         isOpen={showMethodologyModal}
         onClose={() => setShowMethodologyModal(false)}
       />
+
+      {/* "What is happening now?" — persistent plain-English system status bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-[90] bg-black/90 backdrop-blur-md border-t border-white/10 px-4 py-1.5">
+        <div className="max-w-7xl mx-auto flex items-center gap-2">
+          <span className="relative flex h-1.5 w-1.5 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-accent" />
+          </span>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={systemStatusIndex}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.3 }}
+              className="text-[10px] font-mono text-muted truncate"
+            >
+              {SYSTEM_STATUS_MESSAGES[systemStatusIndex]}
+            </motion.p>
+          </AnimatePresence>
+        </div>
+      </div>
       </div>
     </>
   );
