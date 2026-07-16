@@ -386,38 +386,62 @@ export default function App() {
   }, [walletConnected, isGuestMode]);
 
   const [analysisButtonState, setAnalysisButtonState] = useState<'idle' | 'analyzing' | 'done'>('idle');
+  const [analysisStage, setAnalysisStage] = useState<string>('');
+
+  const ANALYSIS_STAGES = [
+    '[01] INGESTING_SOSO_TELEMETRY...',
+    '[02] RUNNING_RISK_AUDITOR_VETO_CHECKS...',
+    '[03] CALCULATING_KELLY_OPTIMIZATION...',
+    '[04] SYNTHESIZING_NEURAL_REPORT...',
+  ];
 
   const handleGenerateAnalysis = async () => {
     if (analysisButtonState === 'analyzing') return;
     setAnalysisButtonState('analyzing');
-    addLog("Cross-examining live Funding Rate & Sentiment via Neural Consensus Engine...", "process");
 
-    try {
+    // Task 1 + 4: cycle through the 4 stages (800ms apart), pushing each
+    // one into the Agent Logger as it happens. The loop naturally stops
+    // advancing once it sets the final stage — from then on the button
+    // and log just sit on stage 4 until the real data actually arrives,
+    // satisfying Task 3's "stay on Step 04 until data arrives" behavior.
+    const runStageSequence = async () => {
+      for (let i = 0; i < ANALYSIS_STAGES.length; i++) {
+        setAnalysisStage(ANALYSIS_STAGES[i]);
+        addLog(ANALYSIS_STAGES[i], "process");
+        if (i < ANALYSIS_STAGES.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 800));
+        }
+      }
+    };
+
+    // Task 3: the real fetches happen immediately in the background,
+    // "masked" by the stepper above. Both getSoSoVaultAnalysis and
+    // fetchNeuralInsight already resolve with a labeled fallback on
+    // failure rather than throwing, so this never rejects.
+    const runDataFetch = async () => {
       const result = await getSoSoVaultAnalysis(data.sentiment, data.sectors, data.macro, data.portfolio);
-      setAnalysis(result);
-      addLog(result.neural_rationale || result.reasoning_narrative || "Neural Consensus Finalized.", "info");
-      setAnalysisButtonState('done');
-    } catch (err) {
-      console.error("Generate Analysis failed:", err);
-      addLog("[ERROR] Neural Consensus Engine unreachable — retaining prior analysis.", "alert");
-      setAnalysisButtonState('idle');
-      return;
-    }
-
-    // Fetch the 7-day written Neural Insight report in parallel with the
-    // quantitative analysis above. Kept as its own try/catch so a failure
-    // here never blocks or reverts the analysis result that already
-    // succeeded — this is an additive institutional-narrative layer, not
-    // a dependency of the core Generate Analysis flow.
-    try {
-      addLog("Synthesizing 7-Day Institutional Insight from SoSoValue history...", "process");
       const insight = await fetchNeuralInsight();
-      setAnalysisReport(insight.report);
-      setInsightEvidence(insight); // Task 4: raw payload -> Evidence Vault
-      addLog(`[NEURAL_INSIGHT] 7-day report transmitted (${insight.source}).`, "info");
-    } catch (insightErr) {
-      console.error("fetchNeuralInsight failed:", insightErr);
-    }
+      return { result, insight };
+    };
+
+    const stagePromise = runStageSequence();
+    const dataPromise = runDataFetch();
+
+    // Promise.all is what actually implements the "Smooth Finish": it
+    // resolves only once BOTH the minimum stage-display time (>= 2400ms)
+    // AND the real data have completed — whichever takes longer wins,
+    // exactly matching Task 3's two cases.
+    const [, { result, insight }] = await Promise.all([stagePromise, dataPromise]);
+
+    setAnalysis(result);
+    addLog(result.neural_rationale || result.reasoning_narrative || "Neural Consensus Finalized.", "info");
+
+    setAnalysisReport(insight.report);
+    setInsightEvidence(insight); // Task 4 (from the previous feature): raw payload -> Evidence Vault
+    addLog(`[NEURAL_INSIGHT] 7-day report transmitted (${insight.source}).`, "info");
+
+    setAnalysisStage('');
+    setAnalysisButtonState('done');
 
     // Return the button to its normal state after a beat so it's ready for
     // the next click, rather than getting permanently stuck on "Consensus Reached."
@@ -1457,12 +1481,19 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                     <button 
                       disabled={loading || isSimulating || analysisButtonState === 'analyzing'}
                       onClick={handleGenerateAnalysis}
-                      className="flex-1 py-3 bg-white text-black font-bold uppercase tracking-widest text-[10px] rounded-xl hover:bg-accent transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      className={cn(
+                        "flex-1 py-3 font-bold uppercase tracking-widest text-[10px] rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-100",
+                        analysisButtonState === 'analyzing'
+                          ? "bg-black border border-emerald-500/30"
+                          : "bg-white text-black hover:bg-accent"
+                      )}
                     >
                       {analysisButtonState === 'analyzing' ? (
                         <>
-                          <RefreshCcw size={12} className="animate-spin" />
-                          Analyzing...
+                          <RefreshCcw size={12} className="animate-spin text-emerald-400 shrink-0" />
+                          <span className="font-mono text-emerald-400 animate-pulse text-[9px] tracking-wider truncate">
+                            {analysisStage}
+                          </span>
                         </>
                       ) : analysisButtonState === 'done' ? (
                         <>
