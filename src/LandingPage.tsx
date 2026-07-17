@@ -95,10 +95,6 @@ export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPagePr
   const [showMethodology, setShowMethodology] = useState(false);
   const { items } = useLiveTicker(onEvidence);
 
-  // Map our TickerItem[] (label/price/change24h) into FloatingHeader's
-  // display format (label/value/positive). Falls back to FloatingHeader's
-  // own DEFAULT_TICKER (via `undefined`) until the first live poll resolves,
-  // rather than flashing an empty bar.
   const headerTickerItems: HeaderTickerItem[] | undefined = items.length > 0
     ? items.map((item) => ({
         label: item.label === 'SOSO_SENTIMENT' ? 'SENTIMENT' : `${item.label}/USD`,
@@ -119,22 +115,22 @@ export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPagePr
       transition={{ duration: 0.6, ease: 'easeInOut' }}
       className="fixed inset-0 z-40 bg-black overflow-y-auto"
     >
-      {/* Background Intelligence layer: hairline grid + soft central mesh glow, no neon */}
       <div
         className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]"
       />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-emerald-500/5 blur-[160px] rounded-full pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/70 pointer-events-none" />
-      {/* Scanner sweep — reinforces the "live financial system" feel */}
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/60 to-transparent animate-scanner pointer-events-none" />
 
       <FloatingHeader scrollContainerRef={scrollRef} tickerItems={headerTickerItems} />
 
-      <div className="relative z-10 min-h-full flex flex-col">
-        {/* Hero — vertically centered. pt-32 clears the floating header
-            (which replaced the old inline breadcrumb bar above). */}
+      {/* pb-12 clears the fixed sticky Auditor/Contract bar at the very bottom */}
+      <div className="relative z-10 min-h-full flex flex-col pb-12">
+
+        {/* ============================================================ */}
+        {/* SECTION 1 — HERO. The hook.                                   */}
+        {/* ============================================================ */}
         <div className="max-w-4xl w-full mx-auto px-6 pt-32 pb-14 text-center flex-1 flex flex-col items-center justify-center">
-          {/* Status badges */}
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -175,7 +171,6 @@ export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPagePr
             Data with Hard-Coded Quant Governance.
           </motion.p>
 
-          {/* Telemetry strip */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -196,7 +191,6 @@ export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPagePr
             transition={{ duration: 0.55, delay: 0.3 }}
             className="mt-9 flex flex-col items-center gap-4"
           >
-            {/* Ghost button — dark emerald, sharp 1px border, glows on hover rather than a solid block */}
             <button
               onClick={onLaunch}
               className={[
@@ -225,7 +219,9 @@ export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPagePr
           </motion.div>
         </div>
 
-        {/* Operational Blueprint — removes guesswork: exactly what to do, and what each tab shows */}
+        {/* ============================================================ */}
+        {/* SECTION 2 — SYSTEM OPERATIONS. How to act.                    */}
+        {/* ============================================================ */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -237,8 +233,7 @@ export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPagePr
             <h2 className="text-lg sm:text-xl font-bold text-white mt-2 tracking-tight">System Operations — How to Navigate the Protocol</h2>
           </div>
 
-          {/* Protocol Flow — 3 steps, thin emerald connector line shows the data flow on desktop */}
-          <div className="relative grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-6 mb-14">
+          <div className="relative grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-6">
             <div className="hidden md:block absolute top-[19px] left-[16.6%] right-[16.6%] h-px bg-gradient-to-r from-emerald-500/10 via-emerald-500/50 to-emerald-500/10" />
             {PROTOCOL_STEPS.map((step, i) => (
               <div key={step.op} className="relative flex flex-col items-center md:items-start text-center md:text-left">
@@ -251,9 +246,68 @@ export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPagePr
               </div>
             ))}
           </div>
+        </motion.div>
 
-          {/* Terminal Map — cheat-sheet so a judge knows what each tab shows before ever clicking */}
-          <div className="max-w-2xl mx-auto p-5 sm:p-6 rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-md">
+        {/* ============================================================ */}
+        {/* SECTION 3 — THE NEURAL CORE. The tech behind it.              */}
+        {/* ============================================================ */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.35 }}
+          className="w-full pb-16"
+        >
+          <div className="text-center mb-8 px-6">
+            <span className="text-[10px] font-mono uppercase tracking-[0.3em] text-emerald-500/60">
+              [ SYSTEM_ARCHITECTURE // THE_NEURAL_CORE ]
+            </span>
+          </div>
+          <div className="overflow-hidden">
+            <div className="flex gap-5 w-max animate-[ticker-scroll_28s_linear_infinite] hover:[animation-play-state:paused]">
+              {[...MODULES, ...MODULES, ...MODULES].map((m, i) => (
+                <div
+                  key={`${m.title}-${i}`}
+                  className="relative overflow-hidden shrink-0 w-[320px] p-6 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-xl animate-card-ambient hover:[animation-play-state:paused] hover:border-emerald-500/30 hover:shadow-[0_0_24px_rgba(16,185,129,0.12)] transition-colors"
+                  style={{ animationDelay: `${(i % MODULES.length) * 1.2}s` }}
+                >
+                  <div
+                    className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent animate-card-scan pointer-events-none"
+                    style={{ animationDelay: `${(i % MODULES.length) * 0.6}s` }}
+                  />
+
+                  <div className="flex items-center justify-between mb-5 text-[9px] font-mono uppercase tracking-widest text-slate-500">
+                    <span>MODULE_{m.index} // {m.tag}</span>
+                    <span className="text-emerald-500/60">{m.kind}</span>
+                  </div>
+
+                  <div className="w-6 h-px bg-emerald-500/50 mb-3" />
+
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wide mb-2 font-sans">{m.title}</h3>
+                  <p className="text-[12px] text-slate-400 leading-relaxed">
+                    {m.body}
+                    {m.tag === 'RISK_AUDITOR' && (
+                      <span className="inline-flex align-middle ml-1">
+                        <InfoTooltip>Mathematical risk model that optimizes trade size for maximum growth.</InfoTooltip>
+                      </span>
+                    )}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ============================================================ */}
+        {/* SECTION 4 — TERMINAL MAP. Where to go, the final reference    */}
+        {/* before the footer.                                            */}
+        {/* ============================================================ */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="max-w-2xl w-full mx-auto px-6 pb-16"
+        >
+          <div className="p-5 sm:p-6 rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-md">
             <h3 className="text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
               <Compass size={12} className="text-emerald-500/70" />
               Terminal Map
@@ -277,88 +331,11 @@ export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPagePr
           </div>
         </motion.div>
 
-        {/* Feature modules — "Technical Data Sheet" cards, scrolling right-to-left */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.35 }}
-          className="w-full overflow-hidden pb-16"
-        >
-          <div className="flex gap-5 w-max animate-[ticker-scroll_28s_linear_infinite] hover:[animation-play-state:paused]">
-            {[...MODULES, ...MODULES, ...MODULES].map((m, i) => (
-              <div
-                key={`${m.title}-${i}`}
-                className="relative overflow-hidden shrink-0 w-[320px] p-6 rounded-xl border border-white/10 bg-white/[0.02] backdrop-blur-xl animate-card-ambient hover:[animation-play-state:paused] hover:border-emerald-500/30 hover:shadow-[0_0_24px_rgba(16,185,129,0.12)] transition-colors"
-                style={{ animationDelay: `${(i % MODULES.length) * 1.2}s` }}
-              >
-                {/* Occasional scan line, staggered per card so they don't all fire in sync */}
-                <div
-                  className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent animate-card-scan pointer-events-none"
-                  style={{ animationDelay: `${(i % MODULES.length) * 0.6}s` }}
-                />
-
-                <div className="flex items-center justify-between mb-5 text-[9px] font-mono uppercase tracking-widest text-slate-500">
-                  <span>MODULE_{m.index} // {m.tag}</span>
-                  <span className="text-emerald-500/60">{m.kind}</span>
-                </div>
-
-                {/* Sharp vector accent instead of a boxed icon avatar */}
-                <div className="w-6 h-px bg-emerald-500/50 mb-3" />
-
-                <h3 className="text-sm font-bold text-white uppercase tracking-wide mb-2 font-sans">{m.title}</h3>
-                <p className="text-[12px] text-slate-400 leading-relaxed">
-                  {m.body}
-                  {m.tag === 'RISK_AUDITOR' && (
-                    <span className="inline-flex align-middle ml-1">
-                      <InfoTooltip>Mathematical risk model that optimizes trade size for maximum growth.</InfoTooltip>
-                    </span>
-                  )}
-                </p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Audit Status Bar — command-line footer, the trust anchor of the whole page */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.65 }}
-          className="border-t border-white/10 bg-black"
-        >
-          <div className="max-w-6xl w-full mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] sm:text-xs font-mono">
-            <div className="flex items-center gap-2 text-slate-500 uppercase tracking-widest">
-              <Radio size={11} className="text-emerald-500/70" />
-              GOVERNANCE_NETWORK: ETH_SEPOLIA (CHAIN_{SEPOLIA_CHAIN_ID})
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1.5 text-slate-400">
-              <a
-                href={`https://sepolia.etherscan.io/address/${AUTHORIZED_AUDITOR}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 hover:text-emerald-400 transition-colors"
-              >
-                AUDITOR_HANDSHAKE: [{AUTHORIZED_AUDITOR.slice(0, 4)}...{AUTHORIZED_AUDITOR.slice(-4)}]
-                <ArrowUpRight size={9} />
-              </a>
-              <span className="text-slate-700">|</span>
-              <a
-                href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 hover:text-emerald-400 transition-colors"
-              >
-                CONTRACT_SETTLEMENT: [{CONTRACT_ADDRESS.slice(0, 4)}...{CONTRACT_ADDRESS.slice(-4)}]
-                <ArrowUpRight size={9} />
-              </a>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Institutional Footer — About / Whitepaper / Contact links */}
+        {/* ============================================================ */}
+        {/* SECTION 5 — INSTITUTIONAL FOOTER. About / Whitepaper / Contact */}
+        {/* ============================================================ */}
         <footer className="border-t border-white/5 bg-black">
           <div className="max-w-6xl w-full mx-auto px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            {/* Group 1: Protocol */}
             <nav className="flex flex-col gap-2.5">
               <span className="text-[9px] uppercase tracking-widest text-slate-600 mb-0.5">Protocol</span>
               <button
@@ -383,7 +360,6 @@ export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPagePr
               </a>
             </nav>
 
-            {/* Group 2: Reach */}
             <nav className="flex flex-col gap-2.5">
               <span className="text-[9px] uppercase tracking-widest text-slate-600 mb-0.5">Reach</span>
               <a
@@ -412,6 +388,43 @@ export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPagePr
           </div>
         </footer>
       </div>
+
+      {/* Sticky Auditor / Contract status bar — always visible at the
+          bottom of the viewport, the trust anchor for the whole page. */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.65 }}
+        className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-black/90 backdrop-blur-md"
+      >
+        <div className="max-w-6xl w-full mx-auto px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-2 text-[9px] sm:text-[10px] font-mono">
+          <div className="flex items-center gap-2 text-slate-500 uppercase tracking-widest">
+            <Radio size={11} className="text-emerald-500/70" />
+            GOVERNANCE_NETWORK: ETH_SEPOLIA (CHAIN_{SEPOLIA_CHAIN_ID})
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-slate-400">
+            <a
+              href={`https://sepolia.etherscan.io/address/${AUTHORIZED_AUDITOR}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1 hover:text-emerald-400 transition-colors"
+            >
+              AUDITOR_HANDSHAKE: [{AUTHORIZED_AUDITOR.slice(0, 4)}...{AUTHORIZED_AUDITOR.slice(-4)}]
+              <ArrowUpRight size={9} />
+            </a>
+            <span className="text-slate-700">|</span>
+            <a
+              href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1 hover:text-emerald-400 transition-colors"
+            >
+              CONTRACT_SETTLEMENT: [{CONTRACT_ADDRESS.slice(0, 4)}...{CONTRACT_ADDRESS.slice(-4)}]
+              <ArrowUpRight size={9} />
+            </a>
+          </div>
+        </div>
+      </motion.div>
 
       <MethodologyModal isOpen={showMethodology} onClose={() => setShowMethodology(false)} />
     </motion.div>
