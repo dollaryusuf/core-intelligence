@@ -1901,7 +1901,7 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                             Half-Kelly Size: <span className="font-mono-numbers">{intelligence?.risk_engine?.kelly_size || "31.67"}%</span>
                           </span>
                           <InfoTooltip align="right">
-                            A mathematical formula used to determine the perfect trade size to maximize growth while protecting your balance.
+                            Mathematical risk model that optimizes trade size for maximum growth.
                           </InfoTooltip>
                           <button 
                             onClick={() => analysis?.signal_attribution && setActiveSignalAttribution(analysis.signal_attribution)}
@@ -1990,7 +1990,10 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                                 {blackSwanActive ? "VETOED" : "PASSED"}
                               </span>
                             </div>
-                            <p className="text-[11px] font-mono font-medium text-white/95">ETF Flows Guardrail</p>
+                            <p className="text-[11px] font-mono font-medium text-white/95 flex items-center gap-1.5">
+                              ETF Flows Guardrail
+                              <InfoTooltip>Hard-coded Python rules that block trades during institutional outflows.</InfoTooltip>
+                            </p>
                             <p className="text-[10px] text-muted leading-relaxed font-sans">
                               Vetos rebalances if net ETF outflows exceed -$100M today, forcing 50% stables.
                             </p>

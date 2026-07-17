@@ -4,6 +4,7 @@
  */
 import { motion } from 'motion/react';
 import { BrainCircuit, ShieldCheck } from 'lucide-react';
+import { InfoTooltip } from './InfoTooltip';
 
 interface AgentDialogueProps {
   alphaHunterLine: string;
@@ -18,7 +19,10 @@ interface AgentDialogueProps {
 export function AgentDialogue({ alphaHunterLine, riskAuditorLine }: AgentDialogueProps) {
   return (
     <div className="bg-card border border-white/5 rounded-2xl p-4 sm:p-6 space-y-4">
-      <h3 className="text-[10px] font-mono uppercase tracking-widest text-muted">Consensus Dialogue</h3>
+      <h3 className="text-[10px] font-mono uppercase tracking-widest text-muted flex items-center gap-1.5">
+        Consensus Dialogue
+        <InfoTooltip>The debate between LLM market sentiment and Python risk auditing.</InfoTooltip>
+      </h3>
 
       {/* Alpha Hunter — left side */}
       <motion.div

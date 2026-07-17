@@ -15,12 +15,14 @@ import {
   Send,
   LifeBuoy,
   FileText,
+  Compass,
 } from 'lucide-react';
 import { CONTRACT_ADDRESS, AUTHORIZED_AUDITOR, SEPOLIA_CHAIN_ID } from './lib/contract';
 import { FloatingHeader, TickerItem as HeaderTickerItem } from './FloatingHeader';
 import { useLiveTicker } from './useLiveTicker';
 import { TickerPayload } from './lib/aiService';
 import { MethodologyModal } from './MethodologyModal';
+import { InfoTooltip } from './InfoTooltip';
 
 interface LandingPageProps {
   /** Fired when "Launch Terminal" is clicked — parent should mount the ConnectionGate next. */
@@ -61,6 +63,31 @@ const MODULES = [
     kind: 'TELEGRAM',
     body: '24/7 Global Oversight. Full-duplex Telegram integration for mobile alerts and on-chain trade execution.',
   },
+];
+
+const PROTOCOL_STEPS = [
+  {
+    op: 'OP_01',
+    title: 'AUDITOR_HANDSHAKE',
+    body: 'Authorize your EVM wallet at the gateway to unlock terminal access. Every execution is cryptographically tied to this authorized auditor address.',
+  },
+  {
+    op: 'OP_02',
+    title: 'NEURAL_SYNTHESIS',
+    body: 'Navigate to the Strategy tab. Fetch 7 days of SoSoValue telemetry. The Alpha Hunter proposes, the Risk Auditor validates.',
+  },
+  {
+    op: 'OP_03',
+    title: 'ON-CHAIN_FINALITY',
+    body: 'Approve rebalances via the Execution Hub. Watch your trade settle on Ethereum Sepolia with a verifiable transaction hash.',
+  },
+];
+
+const TERMINAL_MAP = [
+  { tag: '[01]', name: 'OVERVIEW', desc: 'Real-time market heartbeat & SoSoValue telemetry.' },
+  { tag: '[02]', name: 'STRATEGY', desc: 'Neural report generation & Risk Auditor VETO checks.', hasVetoTooltip: true },
+  { tag: '[03]', name: 'EMPIRE', desc: 'Global AUM impact & multi-vault synchronization.' },
+  { tag: '[04]', name: 'EVIDENCE', desc: 'Raw JSON payloads & Etherscan audit ledger.' },
 ];
 
 export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPageProps) {
@@ -132,7 +159,10 @@ export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPagePr
             transition={{ duration: 0.55, delay: 0.05 }}
             className="text-3xl sm:text-5xl font-bold tracking-tighter leading-[1.08] font-sans bg-gradient-to-b from-white via-white to-white/70 bg-clip-text text-transparent"
           >
-            SOSO-VAULT: <span className="text-emerald-500">NEURAL CONSENSUS PROTOCOL</span>
+            SOSO-VAULT: <span className="text-emerald-500">NEURAL CONSENSUS PROTOCOL</span>{' '}
+            <span className="inline-flex align-middle -translate-y-2">
+              <InfoTooltip>The debate between LLM market sentiment and Python risk auditing.</InfoTooltip>
+            </span>
           </motion.h1>
 
           <motion.p
@@ -189,8 +219,63 @@ export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPagePr
               <Eye size={12} />
               Enter as Guest (View-Only Mode)
             </button>
+            <span className="text-[9px] font-mono text-slate-600 uppercase tracking-wider">
+              (Restricted access: Logic observation only)
+            </span>
           </motion.div>
         </div>
+
+        {/* Operational Blueprint — removes guesswork: exactly what to do, and what each tab shows */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="max-w-5xl w-full mx-auto px-6 pb-16"
+        >
+          <div className="text-center mb-10">
+            <span className="text-[10px] font-mono uppercase tracking-[0.3em] text-emerald-500/60">Operational Blueprint</span>
+            <h2 className="text-lg sm:text-xl font-bold text-white mt-2 tracking-tight">System Operations — How to Navigate the Protocol</h2>
+          </div>
+
+          {/* Protocol Flow — 3 steps, thin emerald connector line shows the data flow on desktop */}
+          <div className="relative grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-6 mb-14">
+            <div className="hidden md:block absolute top-[19px] left-[16.6%] right-[16.6%] h-px bg-gradient-to-r from-emerald-500/10 via-emerald-500/50 to-emerald-500/10" />
+            {PROTOCOL_STEPS.map((step, i) => (
+              <div key={step.op} className="relative flex flex-col items-center md:items-start text-center md:text-left">
+                <div className="relative z-10 w-10 h-10 rounded-full bg-black border border-emerald-500/40 grid place-items-center mb-4 font-mono text-[11px] font-bold text-emerald-400 shrink-0">
+                  {i + 1}
+                </div>
+                <span className="text-[9px] font-mono uppercase tracking-widest text-emerald-500/60 mb-1">[{step.op}]</span>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wide mb-2 font-mono">{step.title}</h3>
+                <p className="text-[12px] text-slate-400 leading-relaxed max-w-xs">{step.body}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Terminal Map — cheat-sheet so a judge knows what each tab shows before ever clicking */}
+          <div className="max-w-2xl mx-auto p-5 sm:p-6 rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-md">
+            <h3 className="text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+              <Compass size={12} className="text-emerald-500/70" />
+              Terminal Map
+            </h3>
+            <div className="space-y-3">
+              {TERMINAL_MAP.map((t) => (
+                <div key={t.tag} className="flex items-start gap-3 text-[12px] font-mono">
+                  <span className="text-emerald-400 font-bold shrink-0">{t.tag}</span>
+                  <span className="text-white font-bold shrink-0">{t.name}:</span>
+                  <span className="text-slate-400 flex-1">
+                    {t.desc}
+                    {t.hasVetoTooltip && (
+                      <span className="inline-flex align-middle ml-1">
+                        <InfoTooltip>Hard-coded Python rules that block trades during institutional outflows.</InfoTooltip>
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
 
         {/* Feature modules — "Technical Data Sheet" cards, scrolling right-to-left */}
         <motion.div
@@ -221,7 +306,14 @@ export function LandingPage({ onLaunch, onGuestMode, onEvidence }: LandingPagePr
                 <div className="w-6 h-px bg-emerald-500/50 mb-3" />
 
                 <h3 className="text-sm font-bold text-white uppercase tracking-wide mb-2 font-sans">{m.title}</h3>
-                <p className="text-[12px] text-slate-400 leading-relaxed">{m.body}</p>
+                <p className="text-[12px] text-slate-400 leading-relaxed">
+                  {m.body}
+                  {m.tag === 'RISK_AUDITOR' && (
+                    <span className="inline-flex align-middle ml-1">
+                      <InfoTooltip>Mathematical risk model that optimizes trade size for maximum growth.</InfoTooltip>
+                    </span>
+                  )}
+                </p>
               </div>
             ))}
           </div>
