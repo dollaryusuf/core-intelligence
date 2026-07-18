@@ -79,6 +79,7 @@ import {
 } from './lib/aiService';
 import { TypewriterText } from './TypewriterText';
 import { InfoTooltip } from './InfoTooltip';
+import { AuditTrigger } from './AuditTrigger';
 import { AgentDialogue } from './AgentDialogue';
 import { StatusBadge } from './StatusBadge';
 import { 
@@ -1212,13 +1213,9 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                       <BarChart3 size={14} className="text-accent" />
                       Sector Performance vs BTC
                       {analysis?.signal_attribution && (
-                        <button 
-                          onClick={() => setActiveSignalAttribution(analysis.signal_attribution)}
-                          className="ml-auto p-1 bg-white/5 rounded hover:bg-white/10 transition-colors"
-                          title="View Evidence Vault"
-                        >
-                          <Info size={12} className="text-accent" />
-                        </button>
+                        <span className="ml-auto">
+                          <AuditTrigger onClick={() => setActiveSignalAttribution(analysis.signal_attribution)} />
+                        </span>
                       )}
                     </h3>
                   </div>
@@ -1269,13 +1266,7 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                           Money moving in or out of Bitcoin/Ethereum ETFs. Large outflows suggest big institutions are pulling back.
                         </InfoTooltip>
                         {analysis?.signal_attribution && (
-                          <button 
-                            onClick={() => setActiveSignalAttribution(analysis.signal_attribution)}
-                            className="p-1 bg-white/5 rounded hover:bg-white/10 transition-colors"
-                            title="View Evidence Vault"
-                          >
-                            <Info size={12} className="text-accent" />
-                          </button>
+                          <AuditTrigger onClick={() => setActiveSignalAttribution(analysis.signal_attribution)} />
                         )}
                       </h3>
                       <p className="text-[10px] text-muted uppercase font-mono">Net Flow (USDm) per period</p>
@@ -1444,12 +1435,9 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                             {(data.sentiment.score * 100).toFixed(0)}<span className="text-muted text-xl">%</span>
                           </div>
                           {analysis?.signal_attribution && (
-                            <button 
-                              onClick={() => setActiveSignalAttribution(analysis.signal_attribution)} 
-                              className="text-accent hover:opacity-100 opacity-60 flex items-center gap-1 text-[10px] font-mono pb-2"
-                            >
-                              (Source) <Info size={10} />
-                            </button>
+                            <span className="pb-2">
+                              <AuditTrigger onClick={() => setActiveSignalAttribution(analysis.signal_attribution)} label="AUDIT_PROVENANCE" />
+                            </span>
                           )}
                         </div>
                         <p className="text-xs text-muted leading-relaxed italic border-l-2 border-accent/30 pl-3 line-clamp-2">
@@ -1903,12 +1891,10 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                           <InfoTooltip align="right">
                             Mathematical risk model that optimizes trade size for maximum growth.
                           </InfoTooltip>
-                          <button 
+                          <AuditTrigger
                             onClick={() => analysis?.signal_attribution && setActiveSignalAttribution(analysis.signal_attribution)}
-                            className="bg-accent/20 hover:bg-accent/40 rounded p-0.5"
-                          >
-                            <Info size={10} className="text-accent" />
-                          </button>
+                            className="bg-transparent border-transparent px-1 py-0.5 hover:bg-accent/30"
+                          />
                         </div>
                       </div>
                     </div>
@@ -2063,8 +2049,11 @@ VERIFIED VIA ZK-PROOF ATTESTATION
 
                       <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="bg-black/40 p-4 rounded-xl border border-white/5 relative group cursor-pointer hover:bg-black/60 transition-all" onClick={() => analysis?.signal_attribution && setActiveSignalAttribution(analysis.signal_attribution)}>
-                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Info size={12} className="text-accent" />
+                          <div className="absolute top-2 right-2">
+                            <AuditTrigger
+                              onClick={() => analysis?.signal_attribution && setActiveSignalAttribution(analysis.signal_attribution)}
+                              className="px-1.5 py-0.5"
+                            />
                           </div>
                           <h5 className="text-[9px] font-mono text-muted uppercase mb-2">Macro Analysis</h5>
                           <p className="text-xs text-accent/80 font-mono leading-relaxed">
@@ -2072,8 +2061,11 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                           </p>
                         </div>
                         <div className="bg-black/40 p-4 rounded-xl border border-white/5 relative group cursor-pointer hover:bg-black/60 transition-all" onClick={() => analysis?.signal_attribution && setActiveSignalAttribution(analysis.signal_attribution)}>
-                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Info size={12} className="text-accent" />
+                          <div className="absolute top-2 right-2">
+                            <AuditTrigger
+                              onClick={() => analysis?.signal_attribution && setActiveSignalAttribution(analysis.signal_attribution)}
+                              className="px-1.5 py-0.5"
+                            />
                           </div>
                           <h5 className="text-[9px] font-mono text-muted uppercase mb-2">Sector Analysis</h5>
                           <p className="text-xs text-accent/80 font-mono leading-relaxed">
@@ -2087,8 +2079,11 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                           </p>
                         </div>
                         <div className="bg-black/40 p-4 rounded-xl border border-white/5 relative group cursor-pointer hover:bg-black/60 transition-all" onClick={() => analysis?.signal_attribution && setActiveSignalAttribution(analysis.signal_attribution)}>
-                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Info size={12} className="text-accent" />
+                          <div className="absolute top-2 right-2">
+                            <AuditTrigger
+                              onClick={() => analysis?.signal_attribution && setActiveSignalAttribution(analysis.signal_attribution)}
+                              className="px-1.5 py-0.5"
+                            />
                           </div>
                           <h5 className="text-[9px] font-mono text-muted uppercase mb-2">Trade Rationale</h5>
                           <p className="text-xs text-accent/80 font-mono leading-relaxed">
@@ -2562,9 +2557,10 @@ VERIFIED VIA ZK-PROOF ATTESTATION
                         <div className="flex justify-between items-center text-[11px]">
                           <div className="flex items-center gap-1">
                             <span className="text-muted uppercase">Neural Confidence</span>
-                            <button onClick={() => analysis?.signal_attribution && setActiveSignalAttribution(analysis.signal_attribution)} className="text-accent opacity-60 hover:opacity-100">
-                               <Info size={10} />
-                            </button>
+                            <AuditTrigger
+                              onClick={() => analysis?.signal_attribution && setActiveSignalAttribution(analysis.signal_attribution)}
+                              className="bg-transparent border-transparent px-1 py-0.5"
+                            />
                           </div>
                           <span className="text-accent font-bold font-mono-numbers">{analysis.debate_log?.risk_auditor?.confidence_score}%</span>
                         </div>
